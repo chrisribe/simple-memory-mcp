@@ -376,6 +376,185 @@ async function testSearchWithRelationships(): Promise<void> {
 }
 
 /**
+ * Test updating memory content
+ */
+async function testUpdateMemoryContent(): Promise<void> {
+  // Store a memory first
+  const storeResult = await executeCommand(['store-memory', '--content', 'Original content', '--tags', 'update-test']);
+  const storeOutput = parseJsonOutput(storeResult.stdout);
+  
+  if (!storeOutput?.success || !storeOutput.hash) {
+    throw new Error('Failed to store memory for update test');
+  }
+  
+  const hash = storeOutput.hash;
+  console.log(`  Stored memory with hash: ${formatHash(hash)}`);
+  
+  // Update the content
+  const updateResult = await executeCommand(['update-memory', '--hash', hash, '--content', 'Updated content']);
+  
+  if (updateResult.exitCode !== 0) {
+    throw new Error(`Update memory failed: ${updateResult.stderr}`);
+  }
+  
+  const updateOutput = parseJsonOutput(updateResult.stdout);
+  if (!updateOutput?.success) {
+    throw new Error('Update memory did not return expected success response');
+  }
+  
+  // Verify the update by searching
+  const searchResult = await executeCommand(['search-memory', '--query', 'Updated content']);
+  const searchOutput = parseJsonOutput(searchResult.stdout);
+  
+  if (!searchOutput?.memories || searchOutput.memories.length === 0) {
+    throw new Error('Updated memory not found in search');
+  }
+  
+  const updatedMemory = searchOutput.memories.find((m: any) => m.hash === hash);
+  if (!updatedMemory) {
+    throw new Error('Updated memory not found with correct hash');
+  }
+  
+  if (updatedMemory.content !== 'Updated content') {
+    throw new Error(`Content not updated correctly: ${updatedMemory.content}`);
+  }
+  
+  console.log('✓ Memory content updated successfully');
+}
+
+/**
+ * Test updating memory tags
+ */
+async function testUpdateMemoryTags(): Promise<void> {
+  // Store a memory first
+  const storeResult = await executeCommand(['store-memory', '--content', 'Content for tag update', '--tags', 'old,tag']);
+  const storeOutput = parseJsonOutput(storeResult.stdout);
+  
+  if (!storeOutput?.success || !storeOutput.hash) {
+    throw new Error('Failed to store memory for tag update test');
+  }
+  
+  const hash = storeOutput.hash;
+  console.log(`  Stored memory with hash: ${formatHash(hash)}`);
+  
+  // Update the tags
+  const updateResult = await executeCommand(['update-memory', '--hash', hash, '--tags', 'new,updated,tag']);
+  
+  if (updateResult.exitCode !== 0) {
+    throw new Error(`Update memory tags failed: ${updateResult.stderr}`);
+  }
+  
+  const updateOutput = parseJsonOutput(updateResult.stdout);
+  if (!updateOutput?.success) {
+    throw new Error('Update memory tags did not return expected success response');
+  }
+  
+  // Verify the update by searching with new tags
+  const searchResult = await executeCommand(['search-memory', '--tags', 'new']);
+  const searchOutput = parseJsonOutput(searchResult.stdout);
+  
+  if (!searchOutput?.memories || searchOutput.memories.length === 0) {
+    throw new Error('Updated memory not found in tag search');
+  }
+  
+  const updatedMemory = searchOutput.memories.find((m: any) => m.hash === hash);
+  if (!updatedMemory) {
+    throw new Error('Updated memory not found with correct hash');
+  }
+  
+  if (!updatedMemory.tags.includes('new') || !updatedMemory.tags.includes('updated')) {
+    throw new Error(`Tags not updated correctly: ${updatedMemory.tags.join(',')}`);
+  }
+  
+  // Verify old tag is gone
+  if (updatedMemory.tags.includes('old')) {
+    throw new Error('Old tag still present after update');
+  }
+  
+  console.log('✓ Memory tags updated successfully');
+}
+
+/**
+ * Test updating both content and tags
+ */
+async function testUpdateMemoryBoth(): Promise<void> {
+  // Store a memory first
+  const storeResult = await executeCommand(['store-memory', '--content', 'Original for both update', '--tags', 'original']);
+  const storeOutput = parseJsonOutput(storeResult.stdout);
+  
+  if (!storeOutput?.success || !storeOutput.hash) {
+    throw new Error('Failed to store memory for combined update test');
+  }
+  
+  const hash = storeOutput.hash;
+  console.log(`  Stored memory with hash: ${formatHash(hash)}`);
+  
+  // Update both content and tags
+  const updateResult = await executeCommand([
+    'update-memory', 
+    '--hash', hash, 
+    '--content', 'Updated both content and tags',
+    '--tags', 'combined,update'
+  ]);
+  
+  if (updateResult.exitCode !== 0) {
+    throw new Error(`Update memory (both) failed: ${updateResult.stderr}`);
+  }
+  
+  const updateOutput = parseJsonOutput(updateResult.stdout);
+  if (!updateOutput?.success) {
+    throw new Error('Update memory (both) did not return expected success response');
+  }
+  
+  // Verify the update
+  const searchResult = await executeCommand(['search-memory', '--tags', 'combined']);
+  const searchOutput = parseJsonOutput(searchResult.stdout);
+  
+  if (!searchOutput?.memories || searchOutput.memories.length === 0) {
+    throw new Error('Updated memory not found in search');
+  }
+  
+  const updatedMemory = searchOutput.memories.find((m: any) => m.hash === hash);
+  if (!updatedMemory) {
+    throw new Error('Updated memory not found with correct hash');
+  }
+  
+  if (updatedMemory.content !== 'Updated both content and tags') {
+    throw new Error(`Content not updated correctly: ${updatedMemory.content}`);
+  }
+  
+  if (!updatedMemory.tags.includes('combined') || !updatedMemory.tags.includes('update')) {
+    throw new Error(`Tags not updated correctly: ${updatedMemory.tags.join(',')}`);
+  }
+  
+  console.log('✓ Memory content and tags updated successfully');
+}
+
+/**
+ * Test updating non-existent memory
+ */
+async function testUpdateNonExistentMemory(): Promise<void> {
+  const fakeHash = 'nonexistent123456789abcdef';
+  
+  const updateResult = await executeCommand(['update-memory', '--hash', fakeHash, '--content', 'Should fail']);
+  
+  if (updateResult.exitCode !== 0) {
+    throw new Error(`Update should return gracefully even for non-existent hash`);
+  }
+  
+  const updateOutput = parseJsonOutput(updateResult.stdout);
+  if (updateOutput?.success === true) {
+    throw new Error('Update should fail for non-existent memory');
+  }
+  
+  if (!updateOutput?.message || !updateOutput.message.includes('not found')) {
+    throw new Error('Update should return "not found" message');
+  }
+  
+  console.log('✓ Non-existent memory update handled correctly');
+}
+
+/**
  * Main test runner
  */
 async function runAllTests(): Promise<void> {
@@ -393,6 +572,10 @@ async function runAllTests(): Promise<void> {
     { name: 'Memory Statistics', fn: testMemoryStats },
     { name: 'Integrated Relationships', fn: testIntegratedRelationships },
     { name: 'Search with Relationships', fn: testSearchWithRelationships },
+    { name: 'Update Memory Content', fn: testUpdateMemoryContent },
+    { name: 'Update Memory Tags', fn: testUpdateMemoryTags },
+    { name: 'Update Memory Both', fn: testUpdateMemoryBoth },
+    { name: 'Update Non-Existent Memory', fn: testUpdateNonExistentMemory },
     { name: 'Delete Memory by Tag', fn: testDeleteMemoryByTag },
     { name: 'Search with Limit', fn: testSearchWithLimit },
     { name: 'Improved Search (OR + BM25)', fn: testImprovedSearch }

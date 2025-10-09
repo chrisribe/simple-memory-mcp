@@ -171,8 +171,8 @@ export class MemoryService {
     // Create trigger to automatically update FTS when memories are updated
     this.db.exec(`
       CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-        UPDATE memories_fts SET content = new.content 
-        WHERE rowid = new.id;
+        DELETE FROM memories_fts WHERE rowid = old.id;
+        INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
       END;
     `);
 
@@ -187,8 +187,9 @@ export class MemoryService {
     // This is where all the magic happens - automatic, tracked, safe
     runMigrations(this.db, this.dbPath);
     
-    // Optimize FTS after migrations
-    DatabaseOptimizer.optimizeFTS(this.db);
+    // Don't optimize FTS on init - it can corrupt fresh tables
+    // FTS will be optimized naturally during normal operations
+    // DatabaseOptimizer.optimizeFTS(this.db);
 
     // Prepare statements for better performance
     this.prepareStatements();
@@ -483,6 +484,74 @@ export class MemoryService {
     if (result.changes > 0) this.backup?.backupIfNeeded();
     
     return result.changes;
+  }
+
+  /**
+   * Update a memory's content and/or tags by hash
+   */
+  update(hash: string, content?: string, tags?: string[]): boolean {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    // Validate that at least one field is being updated
+    if (content === undefined && tags === undefined) {
+      throw new Error('Must provide either content or tags to update');
+    }
+
+    // Validate content size if provided
+    if (content !== undefined && content.length > this.maxContentSize) {
+      throw new Error(`Content exceeds maximum size of ${this.maxContentSize} characters`);
+    }
+
+    // Check if memory exists
+    const existing = this.stmts.getMemoryByHash.get(hash) as any;
+    if (!existing) {
+      return false;
+    }
+
+    try {
+      // Prepare statements outside transaction
+      const updateContentStmt = content !== undefined ? 
+        this.db!.prepare(`UPDATE memories SET content = ? WHERE hash = ?`) : null;
+      
+      const deleteTagsStmt = tags !== undefined ?
+        this.db!.prepare(`DELETE FROM tags WHERE memory_id = ?`) : null;
+
+      const updateMemory = this.db.transaction(() => {
+        // Update content if provided
+        if (content !== undefined && updateContentStmt) {
+          updateContentStmt.run(content, hash);
+        }
+
+        // Update tags if provided
+        if (tags !== undefined && deleteTagsStmt) {
+          // Delete existing tags for this memory
+          deleteTagsStmt.run(existing.id);
+
+          // Insert new tags
+          for (const tag of tags) {
+            const normalizedTag = tag.trim().toLowerCase();
+            if (normalizedTag) {
+              this.stmts.insertTag.run(existing.id, normalizedTag);
+            }
+          }
+        }
+
+        return true;
+      });
+
+      const updated = updateMemory();
+      debugLogHash('MemoryService: Updated memory with hash:', hash);
+      
+      // Backup if needed (lazy, throttled)
+      this.backup?.backupIfNeeded();
+      
+      return updated;
+    } catch (error: any) {
+      debugLog('MemoryService: Error updating memory:', error);
+      throw error;
+    }
   }
 
   /**

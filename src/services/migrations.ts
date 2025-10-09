@@ -109,8 +109,8 @@ export const migrations: Migration[] = [
       
       db.exec(`
         CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
-          UPDATE memories_fts SET content = new.content 
-          WHERE rowid = new.id;
+          DELETE FROM memories_fts WHERE rowid = old.id;
+          INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
         END;
       `);
       
@@ -134,6 +134,26 @@ export const migrations: Migration[] = [
       }
       
       debugLog('Migration 3: FTS table updated successfully');
+    }
+  },
+  {
+    version: 4,
+    description: 'Fix FTS update trigger for content updates',
+    up: (db: Database.Database) => {
+      debugLog('Migration 4: Fixing FTS update trigger');
+      
+      // Drop old trigger that uses UPDATE (incompatible with FTS5)
+      db.exec(`DROP TRIGGER IF EXISTS memories_au`);
+      
+      // Create new trigger that uses DELETE + INSERT (compatible with FTS5)
+      db.exec(`
+        CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
+          DELETE FROM memories_fts WHERE rowid = old.id;
+          INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
+        END;
+      `);
+      
+      debugLog('Migration 4: FTS update trigger fixed');
     }
   }
   // Future migrations go here - just add to the array!

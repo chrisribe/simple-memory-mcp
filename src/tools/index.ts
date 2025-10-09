@@ -6,6 +6,7 @@ import type { Tool, ToolDefinition, ToolContext } from '../types/tools.js';
 import { storeMemoryTool } from './store-memory/index.js';
 import { searchMemoryTool } from './search-memory/index.js';
 import { deleteMemoryTool } from './delete-memory/index.js';
+import { updateMemoryTool } from './update-memory/index.js';
 import { memoryStatsTool } from './memory-stats/index.js';
 import { exportMemoryTool } from './export-memory/index.js';
 import { importMemoryTool } from './import-memory/index.js';
@@ -18,6 +19,7 @@ export class ToolRegistry {
     this.registerTool(storeMemoryTool);
     this.registerTool(searchMemoryTool);
     this.registerTool(deleteMemoryTool);
+    this.registerTool(updateMemoryTool);
     this.registerTool(memoryStatsTool);
     this.registerTool(exportMemoryTool);
     this.registerTool(importMemoryTool);
