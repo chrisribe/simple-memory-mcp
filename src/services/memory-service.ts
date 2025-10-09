@@ -154,10 +154,12 @@ export class MemoryService {
       CREATE INDEX IF NOT EXISTS idx_relationships_composite ON relationships(from_memory_id, to_memory_id);
     `);
 
-    // Create FTS table for fast text search (content only, tags in separate table)
+    // Create FTS table for fast text search (stores its own copy of content)
+    // Note: Not using external content (content='memories') to avoid corruption issues
+    // FTS5 external content tables can have sync issues with triggers and WAL mode
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts 
-      USING fts5(content, content='memories', content_rowid='id')
+      USING fts5(content)
     `);
 
     // Create trigger to automatically update FTS when memories are inserted

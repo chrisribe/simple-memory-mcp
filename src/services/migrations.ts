@@ -94,9 +94,10 @@ export const migrations: Migration[] = [
       db.exec(`DROP TABLE IF EXISTS memories_fts`);
       
       // Create new FTS table without tags column
+      // Note: Not using external content (content='memories') to avoid corruption issues
       db.exec(`
         CREATE VIRTUAL TABLE memories_fts 
-        USING fts5(content, content='memories', content_rowid='id')
+        USING fts5(content)
       `);
       
       // Recreate triggers
@@ -154,6 +155,63 @@ export const migrations: Migration[] = [
       `);
       
       debugLog('Migration 4: FTS update trigger fixed');
+    }
+  },
+  {
+    version: 5,
+    description: 'Convert FTS from external content to standalone to fix corruption',
+    up: (db: Database.Database) => {
+      debugLog('Migration 5: Converting FTS to standalone mode');
+      
+      // Drop old triggers
+      db.exec(`DROP TRIGGER IF EXISTS memories_ai`);
+      db.exec(`DROP TRIGGER IF EXISTS memories_au`);
+      db.exec(`DROP TRIGGER IF EXISTS memories_ad`);
+      
+      // Drop old FTS table (external content mode)
+      db.exec(`DROP TABLE IF EXISTS memories_fts`);
+      
+      // Create new FTS table without external content
+      db.exec(`
+        CREATE VIRTUAL TABLE memories_fts 
+        USING fts5(content)
+      `);
+      
+      // Recreate triggers for standalone FTS
+      db.exec(`
+        CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
+          INSERT INTO memories_fts (rowid, content) 
+          VALUES (new.id, new.content);
+        END;
+      `);
+      
+      db.exec(`
+        CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
+          DELETE FROM memories_fts WHERE rowid = old.id;
+          INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
+        END;
+      `);
+      
+      db.exec(`
+        CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
+          DELETE FROM memories_fts WHERE rowid = old.id;
+        END;
+      `);
+      
+      // Repopulate FTS table with existing memories
+      const memories = db.prepare(`SELECT id, content FROM memories`).all() as Array<{ id: number; content: string }>;
+      if (memories.length > 0) {
+        debugLog(`Repopulating FTS table with ${memories.length} memories`);
+        const insertFts = db.prepare(`INSERT INTO memories_fts (rowid, content) VALUES (?, ?)`);
+        const populateFts = db.transaction(() => {
+          for (const memory of memories) {
+            insertFts.run(memory.id, memory.content);
+          }
+        });
+        populateFts();
+      }
+      
+      debugLog('Migration 5: FTS converted to standalone mode successfully');
     }
   }
   // Future migrations go here - just add to the array!
