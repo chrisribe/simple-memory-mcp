@@ -40,18 +40,10 @@ export class DatabaseOptimizer {
    */
   static optimizeFTS(db: Database.Database): void {
     try {
-      // Check if FTS table exists and has data before optimizing
-      const tableExists = db.prepare(`
-        SELECT COUNT(*) as count FROM sqlite_master 
-        WHERE type='table' AND name='memories_fts'
-      `).get() as any;
-      
-      if (tableExists && tableExists.count > 0) {
-        db.exec(`INSERT INTO memories_fts(memories_fts) VALUES('optimize')`);
-        debugLog('FTS index optimized');
-      }
+      db.exec(`INSERT INTO memories_fts(memories_fts) VALUES('optimize')`);
+      debugLog('FTS index optimized');
     } catch (error: any) {
-      // FTS optimization is optional - don't fail if it doesn't work
+      // FTS table might not exist yet, that's fine
       debugLog('FTS optimization skipped:', error.message);
     }
   }

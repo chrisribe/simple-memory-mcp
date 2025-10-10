@@ -154,12 +154,10 @@ export class MemoryService {
       CREATE INDEX IF NOT EXISTS idx_relationships_composite ON relationships(from_memory_id, to_memory_id);
     `);
 
-    // Create FTS table for fast text search (stores its own copy of content)
-    // Note: Not using external content (content='memories') to avoid corruption issues
-    // FTS5 external content tables can have sync issues with triggers and WAL mode
+    // Create FTS table for fast text search (content only, tags in separate table)
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts 
-      USING fts5(content)
+      USING fts5(content, content='memories', content_rowid='id')
     `);
 
     // Create trigger to automatically update FTS when memories are inserted
@@ -173,8 +171,8 @@ export class MemoryService {
     // Create trigger to automatically update FTS when memories are updated
     this.db.exec(`
       CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-        DELETE FROM memories_fts WHERE rowid = old.id;
-        INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
+        UPDATE memories_fts SET content = new.content 
+        WHERE rowid = new.id;
       END;
     `);
 
@@ -189,9 +187,8 @@ export class MemoryService {
     // This is where all the magic happens - automatic, tracked, safe
     runMigrations(this.db, this.dbPath);
     
-    // Don't optimize FTS on init - it can corrupt fresh tables
-    // FTS will be optimized naturally during normal operations
-    // DatabaseOptimizer.optimizeFTS(this.db);
+    // Optimize FTS after migrations
+    DatabaseOptimizer.optimizeFTS(this.db);
 
     // Prepare statements for better performance
     this.prepareStatements();

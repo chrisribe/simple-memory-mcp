@@ -1,6 +1,6 @@
 {
   "name": "simple-memory-mcp",
-  "version": "1.0.30",
+  "version": "1.0.33",
   "description": "Simple memory MCP server for storing and retrieving memories with tags",
   "main": "dist/index.js",
   "type": "module",
