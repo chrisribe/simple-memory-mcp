@@ -1,25 +1,68 @@
 #!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Automatically configure VS Code MCP settings for simple-memory
  * Creates/updates mcp.json in VS Code user directory
  */
 
-const MCP_CONFIG = {
-  "simple-memory-mcp": {
-    "command": "simple-memory"
+// Get command config with proper PATH for WSL
+function getCommandConfig() {
+  const platform = process.platform;
+  
+  // For WSL/Linux with nvm, add nvm bin to PATH
+  if (platform !== 'win32') {
+    try {
+      // Get the node path (should be from nvm)
+      const nodePath = execSync('which node', { encoding: 'utf8' }).trim();
+      
+      // If using nvm, extract the bin directory and prepend to a clean PATH
+      if (nodePath.includes('.nvm')) {
+        const nvmBinDir = dirname(nodePath);
+        return {
+          command: "simple-memory",
+          env: {
+            // Only add nvm bin directory, not the entire current PATH
+            PATH: `${nvmBinDir}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`
+          }
+        };
+      }
+    } catch (e) {
+      // Fall through to simple command
+    }
   }
+  
+  // Default: use simple-memory command (works on Windows and standard Linux installs)
+  return { command: "simple-memory" };
+}
+
+const MCP_CONFIG = {
+  "simple-memory-mcp": getCommandConfig()
 };
 
-const MCP_CONFIG_WITH_COMMENTS = `{
+function getMCPConfigWithComments() {
+  const config = getCommandConfig();
+  let commandLine = `      "command": "${config.command}"`;
+  if (config.args) {
+    commandLine += `,\n      "args": ${JSON.stringify(config.args)}`;
+  }
+  if (config.env) {
+    commandLine += `,\n      "env": ${JSON.stringify(config.env, null, 2).replace(/\n/g, '\n      ')}`;
+  }
+  
+  return `{
   "servers": {
     "simple-memory-mcp": {
-      "command": "simple-memory"
-      // 💡 Uncomment and customize environment variables as needed:
+${commandLine}
+      // 💡 Uncomment and customize additional environment variables:
       // "env": {
       //   "MEMORY_DB": "./memory.db",              // Custom database location
       //   "MEMORY_BACKUP_PATH": "./backups",       // Enable automatic backups
@@ -30,6 +73,9 @@ const MCP_CONFIG_WITH_COMMENTS = `{
     }
   }
 }`;
+}
+
+const MCP_CONFIG_WITH_COMMENTS = getMCPConfigWithComments();
 
 function getVSCodeConfigPaths() {
   const platform = process.platform;
@@ -54,6 +100,17 @@ function getVSCodeConfigPaths() {
       { name: 'VS Code', path: join(config, 'Code', 'User') },
       { name: 'VS Code Insiders', path: join(config, 'Code - Insiders', 'User') }
     );
+    
+    // WSL Remote: Check for vscode-server (when connecting from Windows VS Code)
+    const vscodeServer = join(home, '.vscode-server', 'data', 'User');
+    const vscodeServerInsiders = join(home, '.vscode-server-insiders', 'data', 'User');
+    
+    if (existsSync(vscodeServer)) {
+      paths.push({ name: 'VS Code (WSL Remote)', path: vscodeServer });
+    }
+    if (existsSync(vscodeServerInsiders)) {
+      paths.push({ name: 'VS Code Insiders (WSL Remote)', path: vscodeServerInsiders });
+    }
   }
   
   return paths;
@@ -96,14 +153,23 @@ function configureVSCode(name, vscodeUserPath) {
     mcpConfig[serversProp] = {};
   }
   
-  // Check if already configured
-  if (mcpConfig[serversProp]['simple-memory-mcp']) {
-    console.log(`✅ Already configured in ${name}`);
-    return { success: true, reason: 'already-configured', path: mcpJsonPath.replace(/\\/g, '/') };
-  }
+  // Add or update simple-memory-mcp config
+  const existingConfig = mcpConfig[serversProp]['simple-memory-mcp'];
+  const newConfig = MCP_CONFIG['simple-memory-mcp'];
   
-  // Add simple-memory-mcp config
-  mcpConfig[serversProp]['simple-memory-mcp'] = MCP_CONFIG['simple-memory-mcp'];
+  if (existingConfig) {
+    // Check if it needs updating (add PATH env for nvm)
+    const needsUpdate = !existingConfig.env && newConfig.env;
+    if (needsUpdate) {
+      mcpConfig[serversProp]['simple-memory-mcp'] = newConfig;
+      console.log(`✅ Updated ${name} with nvm PATH for WSL compatibility`);
+    } else {
+      console.log(`✅ Already configured in ${name}`);
+      return { success: true, reason: 'already-configured', path: mcpJsonPath.replace(/\\/g, '/') };
+    }
+  } else {
+    mcpConfig[serversProp]['simple-memory-mcp'] = newConfig;
+  }
   
   try {
     mkdirSync(vscodeUserPath, { recursive: true });

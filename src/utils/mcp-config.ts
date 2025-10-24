@@ -49,6 +49,14 @@ export function getMCPConfigPaths(): MCPConfigPath[] {
       { name: 'Cursor', path: normalizePath(join(config, 'Cursor', 'User', 'mcp.json')), exists: false },
       { name: 'Claude Desktop', path: normalizePath(join(config, 'Claude', 'claude_desktop_config.json')), exists: false }
     );
+    
+    // WSL Remote: Check for vscode-server (when connecting from Windows VS Code)
+    const vscodeServer = join(home, '.vscode-server', 'data', 'User', 'mcp.json');
+    const vscodeServerInsiders = join(home, '.vscode-server-insiders', 'data', 'User', 'mcp.json');
+    paths.push(
+      { name: 'VS Code (WSL Remote)', path: normalizePath(vscodeServer), exists: false },
+      { name: 'VS Code Insiders (WSL Remote)', path: normalizePath(vscodeServerInsiders), exists: false }
+    );
   }
   
   const currentDb = process.env.MEMORY_DB || 'memory.db';

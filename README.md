@@ -43,12 +43,19 @@ Perfect for AI assistants that need to remember context across conversations, st
 
 > 💡 **Best Experience**: Simple Memory works best with **Claude Sonnet in Agent Mode**. The agent's autonomous decision-making and proactive behavior enables optimal memory capture and retrieval without explicit instructions.
 
+> ⚠️ **WSL Users**: Run `bash scripts/setup-wsl.sh` for automated setup. See [WSL Setup Guide](docs/WSL-SETUP.md) for details.
+
 ### 1️⃣ One-Command Setup
 
 **From Source:**
 ```bash
 git clone https://github.com/chrisribe/simple-memory-mcp.git
 cd simple-memory-mcp
+
+# On WSL/Linux:
+bash scripts/setup-wsl.sh
+
+# On Windows/macOS:
 npm run setup
 ```
 
@@ -107,6 +114,7 @@ Restart your MCP client and the `simple-memory-mcp` server will be available. Th
 - [Database](#-database)
 - [Development](#-development)
 - [Examples](#-examples)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -647,7 +655,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🙏 Acknowledgments
+## � Troubleshooting
+
+Having issues? Check out these resources:
+
+- 📋 **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
+- 🐧 **[WSL Setup Guide](docs/WSL-SETUP.md)** - Linux/WSL-specific setup instructions
+- 🔍 **Run diagnostics**: `npm run check-wsl` (checks your environment)
+
+---
+
+## �🙏 Acknowledgments
 
 - Built with the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - Powered by [SQLite](https://www.sqlite.org/) and [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)

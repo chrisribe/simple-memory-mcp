@@ -14,7 +14,9 @@
   ],
   "scripts": {
     "setup": "npm install && npm run build && npm link && npm run configure",
+    "setup:wsl": "bash scripts/setup-wsl.sh",
     "configure": "node scripts/setup-vscode.js",
+    "check-wsl": "bash scripts/check-wsl-env.sh",
     "build": "tsc",
     "build:release": "node scripts/bump-version.js patch && tsc",
     "postbuild": "node -e \"if (process.platform !== 'win32') { require('child_process').execSync('chmod +x dist/index.js'); }\"",
