@@ -347,7 +347,8 @@ export class MemoryService {
    */
   search(
     query?: string, 
-    tags?: string[], 
+    tags?: string[],
+    ids?: number[],
     limit: number = 10,
     daysAgo?: number,
     startDate?: string,
@@ -392,7 +393,31 @@ export class MemoryService {
       }
     }
 
-    if (query) {
+    if (ids && ids.length > 0) {
+      // Search by specific IDs
+      // Query for all specified IDs
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+      
+      const placeholders = ids.map(() => '?').join(',');
+      const stmt = this.db.prepare(`
+        SELECT * FROM memories 
+        WHERE id IN (${placeholders})
+        ORDER BY created_at DESC
+      `);
+      
+      const idResults = stmt.all(...ids);
+      
+      // Hydrate with tags
+      results = idResults.map((row: any) => {
+        const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
+        return {
+          ...row,
+          tags: tagRows.map(t => t.tag)
+        };
+      });
+    } else if (query) {
       // Use FTS for text search
       let ftsResults: any[];
       // Tokenize query into words and join with OR for flexible matching
@@ -869,8 +894,9 @@ export class MemoryService {
     // Use existing search method to get memories
     // Pass undefined for query to use tag search (if tags provided) or recent search (if no filters)
     const memories = this.search(
-      undefined, // query - let search decide based on tags
+      undefined, // query - let search decide based on tags/ids
       filters?.tags,
+      filters?.ids,
       filters?.limit || 1000, // default high limit for export
       undefined, // daysAgo
       filters?.startDate?.toISOString(),

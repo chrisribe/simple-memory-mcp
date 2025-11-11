@@ -4,6 +4,7 @@ import type { MemoryEntry } from '../../services/memory-service.js';
 interface SearchMemoryArgs {
   query?: string;
   tags?: string[];
+  ids?: number[];
   limit?: number;
   includeRelated?: boolean;
   relationshipDepth?: number;
@@ -28,7 +29,8 @@ export async function execute(args: SearchMemoryArgs, context: ToolContext): Pro
 
   const memories = context.memoryService.search(
     args.query, 
-    args.tags, 
+    args.tags,
+    args.ids,
     limit,
     args.daysAgo,
     args.startDate,

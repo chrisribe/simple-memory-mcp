@@ -51,6 +51,7 @@ export interface Tool {
 // Export/Import feature types
 export interface ExportFilters {
   tags?: string[];
+  ids?: number[];
   startDate?: Date;
   endDate?: Date;
   limit?: number;

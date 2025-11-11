@@ -14,6 +14,10 @@ export function parseCliArgs(args: string[]) {
   if (rawArgs.tags) {
     result.tags = (rawArgs.tags as string).split(',').map((tag: string) => tag.trim());
   }
+
+  if (rawArgs.ids) {
+    result.ids = (rawArgs.ids as string).split(',').map((id: string) => parseInt(id.trim(), 10));
+  }
   
   if (rawArgs.daysAgo !== undefined) {
     result.daysAgo = rawArgs.daysAgo; // Already a number

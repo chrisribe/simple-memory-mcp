@@ -89,21 +89,21 @@ function testMigration(): void {
   
   // Test 1: Verify all memories are accessible
   console.log('📊 Test 1: Verify all memories accessible');
-  const allMemories = service.search('', [], 10);
+  const allMemories = service.search('', [], undefined, 10);
   assert.strictEqual(allMemories.length, 5, `Expected 5 memories, got ${allMemories.length}`);
   console.log(`✅ All 5 memories accessible\n`);
   
   // Test 2: Verify tag normalization
   console.log('📊 Test 2: Verify tag normalization and indexing');
-  const typescriptResults = service.search(undefined, ['typescript'], 10);
+  const typescriptResults = service.search(undefined, ['typescript'], undefined, 10);
   assert.strictEqual(typescriptResults.length, 2, `Expected 2 memories with 'typescript' tag, got ${typescriptResults.length}`);
   console.log(`✅ Found ${typescriptResults.length} memories with 'typescript' tag`);
   
-  const testingResults = service.search(undefined, ['testing'], 10);
+  const testingResults = service.search(undefined, ['testing'], undefined, 10);
   assert.strictEqual(testingResults.length, 2, `Expected 2 memories with 'testing' tag, got ${testingResults.length}`);
   console.log(`✅ Found ${testingResults.length} memories with 'testing' tag`);
   
-  const optimizationResults = service.search(undefined, ['optimization'], 10);
+  const optimizationResults = service.search(undefined, ['optimization'], undefined, 10);
   assert.strictEqual(optimizationResults.length, 2, `Expected 2 memories with 'optimization' tag, got ${optimizationResults.length}`);
   console.log(`✅ Found ${optimizationResults.length} memories with 'optimization' tag\n`);
   
@@ -138,14 +138,14 @@ function testMigration(): void {
   
   // Test 7: Verify FTS search still works
   console.log('📊 Test 7: Verify FTS search functionality');
-  const ftsResults = service.search('TypeScript', undefined, 10);
+  const ftsResults = service.search('TypeScript', undefined, undefined, 10);
   assert(ftsResults.length >= 2, `Expected at least 2 FTS results, got ${ftsResults.length}`);
   console.log(`✅ FTS search working: ${ftsResults.length} results\n`);
   
   // Test 8: Verify new memories work with migrated schema
   console.log('📊 Test 8: Verify new memory insertion');
   const newHash = service.store('New memory after migration', ['migration', 'test']);
-  const newMemory = service.search(undefined, ['migration'], 10);
+  const newMemory = service.search(undefined, ['migration'], undefined, 10);
   assert(newMemory.length >= 1, 'New memory should be findable by tag');
   console.log(`✅ New memory insertion works\n`);
   
@@ -240,7 +240,7 @@ function testPartialMigrationRecovery(): void {
   assert.strictEqual(migrationsAfter.length, 3, `Expected 3 migrations, found ${migrationsAfter.length}`);
   
   // Verify tags table exists and data migrated
-  const tagResults = service.search(undefined, ['recovery'], 10);
+  const tagResults = service.search(undefined, ['recovery'], undefined, 10);
   assert.strictEqual(tagResults.length, 1, 'Should find memory by migrated tag');
   
   console.log('✅ Partial migration recovery successful\n');

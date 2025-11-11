@@ -174,7 +174,7 @@ async function runTests() {
     assert(importResult.errors.length === 0, 'No import errors');
     
     // Verify imported data
-    const importedMemories = importService.search(undefined, undefined, 10);
+    const importedMemories = importService.search(undefined, undefined, undefined, 10);
     assert(importedMemories.length === 5, 'All 5 memories are searchable');
     
     // ==========================================
@@ -197,7 +197,7 @@ async function runTests() {
     console.log('\n[TEST 8] Verify relationship preservation');
     
     // Check if relationships were restored
-    const memoriesWithRelationships = importService.search('TypeScript', undefined, 10);
+    const memoriesWithRelationships = importService.search('TypeScript', undefined, undefined, 10);
     if (memoriesWithRelationships.length > 0) {
       const related = importService.getRelated(memoriesWithRelationships[0].hash, 5);
       console.log(`   Found ${related.length} related memories (relationships preserved)`);
@@ -224,7 +224,7 @@ async function runTests() {
     assert(importFilteredResult.success === true, 'Filtered import succeeded');
     assert(importFilteredResult.imported === 3, 'Imported 3 work memories');
     
-    const workMemories = importFilteredService.search(undefined, ['work'], 10);
+    const workMemories = importFilteredService.search(undefined, ['work'], undefined, 10);
     assert(workMemories.length === 3, 'All imported memories have work tag');
     
     importFilteredService.close();

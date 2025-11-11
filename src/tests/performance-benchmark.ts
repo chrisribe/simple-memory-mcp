@@ -97,13 +97,13 @@ async function runBenchmarks() {
   }
   
   const tagSearchResult = benchmark('Search by tag (indexed)', 1000, () => {
-    service.search(undefined, ['search'], 10);
+    service.search(undefined, ['search'], undefined, 10);
   });
   results.push(tagSearchResult);
   console.log(`  Indexed tag query: ${tagSearchResult.avgMs.toFixed(2)}ms avg (${tagSearchResult.opsPerSecond} ops/sec)`);
   
   const multiTagResult = benchmark('Search by multiple tags', 1000, () => {
-    service.search(undefined, ['test'], 10);
+    service.search(undefined, ['test'], undefined, 10);
   });
   results.push(multiTagResult);
   console.log(`  Multiple results: ${multiTagResult.avgMs.toFixed(2)}ms avg (${multiTagResult.opsPerSecond} ops/sec)`);
@@ -128,13 +128,13 @@ async function runBenchmarks() {
   
   const ftsResults = [
     benchmark('FTS: simple query', 1000, () => {
-      service.search('quick brown', undefined, 10);
+      service.search('quick brown', undefined, undefined, 10);
     }),
     benchmark('FTS: complex query', 1000, () => {
-      service.search('machine learning intelligence', undefined, 10);
+      service.search('machine learning intelligence', undefined, undefined, 10);
     }),
     benchmark('FTS: common word', 1000, () => {
-      service.search('performance', undefined, 10);
+      service.search('performance', undefined, undefined, 10);
     })
   ];
   

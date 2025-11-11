@@ -163,6 +163,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
           const memories = memoryService.search(
             query,
             tag ? [tag] : undefined,
+            undefined,
             limit
           );
 

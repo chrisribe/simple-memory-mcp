@@ -70,7 +70,7 @@ async function createAutoRelationships(hash: string, args: StoreMemoryArgs, cont
   
   try {
     // Find memories with similar tags
-    const similarMemories = context.memoryService.search(undefined, args.tags, 5);
+    const similarMemories = context.memoryService.search(undefined, args.tags, undefined, 5);
     
     // Build array of relationships to create
     const relationships = similarMemories
@@ -103,7 +103,7 @@ async function createAutoRelationships(hash: string, args: StoreMemoryArgs, cont
 async function createExplicitRelationships(hash: string, relateTo: string[], context: ToolContext): Promise<number> {
   try {
     // Find memories with the specified tags
-    const relatedMemories = context.memoryService.search(undefined, relateTo, 10);
+    const relatedMemories = context.memoryService.search(undefined, relateTo, undefined, 10);
     
     // Build array of relationships to create
     const relationships = relatedMemories

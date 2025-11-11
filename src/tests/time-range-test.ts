@@ -63,7 +63,7 @@ async function runTests() {
 
     // Test 1: Search memories from TODAY ONLY (daysAgo=0) - Critical UTC edge case
     console.log('Running: Search today only (daysAgo=0)...');
-    const todayOnly = service.search(undefined, undefined, 10, 0);
+    const todayOnly = service.search(undefined, undefined, undefined, 10, 0);
     if (todayOnly.length === 1 && todayOnly[0].content === 'Memory from today') {
       console.log(`✓ Found ${todayOnly.length} memory from today (UTC boundary test passed)`);
       console.log(`  - ${todayOnly[0].content}`);
@@ -78,7 +78,7 @@ async function runTests() {
 
     // Test 2: Search memories from last 2 days
     console.log('Running: Search last 2 days...');
-    const last2Days = service.search(undefined, undefined, 10, 2);
+    const last2Days = service.search(undefined, undefined, undefined, 10, 2);
     if (last2Days.length === 2) {
       console.log(`✓ Found ${last2Days.length} memories from last 2 days`);
       console.log(`  - ${last2Days.map(m => m.content).join('\n  - ')}`);
@@ -91,7 +91,7 @@ async function runTests() {
 
     // Test 3: Search memories from last 10 days
     console.log('Running: Search last 10 days...');
-    const last10Days = service.search(undefined, undefined, 10, 10);
+    const last10Days = service.search(undefined, undefined, undefined, 10, 10);
     if (last10Days.length === 3) {
       console.log(`✓ Found ${last10Days.length} memories from last 10 days`);
       console.log(`  - ${last10Days.map(m => m.content).join('\n  - ')}`);
@@ -104,7 +104,7 @@ async function runTests() {
 
     // Test 4: Search memories from last 40 days
     console.log('Running: Search last 40 days...');
-    const last40Days = service.search(undefined, undefined, 10, 40);
+    const last40Days = service.search(undefined, undefined, undefined, 10, 40);
     if (last40Days.length === 4) {
       console.log(`✓ Found ${last40Days.length} memories from last 40 days`);
       passed++;
@@ -122,7 +122,8 @@ async function runTests() {
     endDate.setDate(endDate.getDate() - 25);
     const dateRange = service.search(
       undefined, 
-      undefined, 
+      undefined,
+      undefined,
       10, 
       undefined,
       startDate.toISOString().split('T')[0], // Use YYYY-MM-DD format
@@ -140,7 +141,7 @@ async function runTests() {
 
     // Test 6: Search with content query + time range
     console.log('Running: Search with query and time range...');
-    const queryAndTime = service.search('Memory', undefined, 10, 10);
+    const queryAndTime = service.search('Memory', undefined, undefined, 10, 10);
     if (queryAndTime.length === 3) {
       console.log(`✓ Found ${queryAndTime.length} memories matching query within time range`);
       passed++;
@@ -152,7 +153,7 @@ async function runTests() {
 
     // Test 7: Search with tags + time range
     console.log('Running: Search with tags and time range...');
-    const tagsAndTime = service.search(undefined, ['old'], 10, 40);
+    const tagsAndTime = service.search(undefined, ['old'], undefined, 10, 40);
     if (tagsAndTime.length === 2) {
       console.log(`✓ Found ${tagsAndTime.length} memories with tag within time range`);
       passed++;

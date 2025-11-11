@@ -18,6 +18,11 @@ export const exportMemoryTool: Tool = {
           items: { type: 'string' },
           description: 'Filter by tags (optional)'
         },
+        ids: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Filter by specific memory IDs (optional)'
+        },
         daysAgo: {
           type: 'number',
           description: 'Export memories from the last N days'
@@ -59,6 +64,12 @@ export const exportMemoryTool: Tool = {
         example: '--tags "work,project"'
       },
       {
+        name: '--ids',
+        description: 'Filter by comma-separated memory IDs',
+        hasValue: true,
+        example: '--ids "1,2,3"'
+      },
+      {
         name: '--days-ago',
         description: 'Export memories from last N days',
         hasValue: true,
@@ -92,6 +103,7 @@ export const exportMemoryTool: Tool = {
     examples: [
       'export-memory --output all.json',
       'export-memory --output work.json --tags "work,project"',
+      'export-memory --output batch.json --ids "1,5,10"',
       'export-memory --output recent.json --start-date 2025-10-01 --limit 20',
       'export-memory --output lastweek.json --days-ago 7'
     ]

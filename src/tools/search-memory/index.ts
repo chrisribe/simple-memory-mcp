@@ -29,6 +29,11 @@ Search silently and incorporate findings naturally into responses.`,
           items: { type: 'string' },
           description: 'Array of tags to filter results by. Matches memories that have these exact tags.'
         },
+        ids: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Array of memory IDs to retrieve. Useful for batch operations when you have specific memory IDs.'
+        },
         limit: {
           type: 'number',
           description: 'Maximum number of results to return',
