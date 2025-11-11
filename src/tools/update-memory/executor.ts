@@ -3,7 +3,7 @@ import { debugLog, formatHash } from '../../utils/debug.js';
 
 interface UpdateMemoryArgs {
   hash: string;
-  content: string;
+  content?: string;
   tags?: string[];
 }
 
@@ -22,16 +22,6 @@ export async function execute(args: UpdateMemoryArgs, context: ToolContext): Pro
       throw new Error('Hash cannot be empty');
     }
 
-    if (!args.content || args.content.trim().length === 0) {
-      throw new Error('Content cannot be empty');
-    }
-
-    // Log content size for large memories
-    const contentSize = args.content.length;
-    if (contentSize > 100000) {
-      debugLog(`Updating with large content: ${contentSize} characters`);
-    }
-
     // Check if memory exists before updating
     const existing = context.memoryService.getByHash(args.hash);
     if (!existing) {
@@ -41,8 +31,22 @@ export async function execute(args: UpdateMemoryArgs, context: ToolContext): Pro
       };
     }
 
+    // Use existing content if not provided (tags-only update)
+    const newContent = args.content !== undefined ? args.content : existing.content;
+
+    // Validate content is not empty
+    if (!newContent || newContent.trim().length === 0) {
+      throw new Error('Content cannot be empty');
+    }
+
+    // Log content size for large memories
+    const contentSize = newContent.length;
+    if (contentSize > 100000) {
+      debugLog(`Updating with large content: ${contentSize} characters`);
+    }
+
     // Perform the update
-    const newHash = context.memoryService.update(args.hash, args.content, args.tags);
+    const newHash = context.memoryService.update(args.hash, newContent, args.tags);
     
     if (!newHash) {
       return {
@@ -53,6 +57,7 @@ export async function execute(args: UpdateMemoryArgs, context: ToolContext): Pro
 
     const hashChanged = newHash !== args.hash;
     const tagsUpdated = args.tags !== undefined;
+    const contentUpdated = args.content !== undefined;
     
     let message = `Memory updated successfully.`;
     if (hashChanged) {
@@ -60,8 +65,10 @@ export async function execute(args: UpdateMemoryArgs, context: ToolContext): Pro
     } else {
       message += ` Hash unchanged: ${formatHash(newHash)}...`;
     }
-    if (tagsUpdated) {
-      message += ` (tags updated)`;
+    if (tagsUpdated && !contentUpdated) {
+      message += ` (tags updated only)`;
+    } else if (tagsUpdated) {
+      message += ` (content and tags updated)`;
     }
     
     return {

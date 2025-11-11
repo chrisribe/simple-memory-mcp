@@ -457,8 +457,8 @@ async function testUpdateMemoryTags(): Promise<void> {
 
   const hash = storeOutput.hash;
 
-  // Update tags only (keep same content)
-  const updateResult = await executeCommand(['update-memory', '--hash', hash, '--content', 'TypeScript configuration notes', '--tags', 'typescript,config,complete']);
+  // Update tags only (WITHOUT providing content - the new feature!)
+  const updateResult = await executeCommand(['update-memory', '--hash', hash, '--tags', 'typescript,config,complete']);
   
   if (updateResult.exitCode !== 0) {
     throw new Error(`Tag update failed: ${updateResult.stderr}`);
@@ -469,7 +469,7 @@ async function testUpdateMemoryTags(): Promise<void> {
     throw new Error('Tag update did not indicate tags were updated');
   }
 
-  console.log(`✓ Updated tags successfully`);
+  console.log(`✓ Updated tags successfully without providing content`);
 
   // Verify new tags by searching
   const searchResult = await executeCommand(['search-memory', '--tags', 'config']);
@@ -488,7 +488,12 @@ async function testUpdateMemoryTags(): Promise<void> {
     throw new Error('Tags were not properly updated');
   }
 
-  console.log(`✓ Verified tags were updated correctly`);
+  // Verify content remained unchanged
+  if (foundMemory.content !== 'TypeScript configuration notes') {
+    throw new Error('Content was changed when it should have remained the same');
+  }
+
+  console.log(`✓ Verified tags were updated and content remained unchanged`);
 }
 
 /**
