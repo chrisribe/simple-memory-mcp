@@ -144,6 +144,9 @@ simple-memory search-memory --query "search term"
 # Search by tags
 simple-memory search-memory --tags "tag1,tag2"
 
+# Search by specific IDs (useful for batch operations)
+simple-memory search-memory --ids "1,5,10"
+
 # Search with relevance filtering (0-1 scale)
 simple-memory search-memory --query "architecture" --min-relevance 0.7
 

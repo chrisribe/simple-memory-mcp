@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **ID-based Search and Export**: Quick batch operations using memory IDs
+  - `search-memory --ids "1,5,10"` - Search for specific memories by ID
+  - `export-memory --ids "1,2,3"` - Export specific memories by ID
+  - Useful for LLM batch operations when query/tag filters don't match all desired memories
+  - IDs can be obtained from previous search results
+
 - **Automated Version Bumping**: GitHub Actions workflow automatically bumps patch version on every commit/merge to main branch
   - Uses existing `npm run build:release` command
   - Commits changes back to repository with `[skip-version]` tag
