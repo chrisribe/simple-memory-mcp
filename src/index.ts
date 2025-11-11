@@ -17,6 +17,7 @@ import { toolRegistry } from './tools/index.js';
 import type { ToolContext } from './types/tools.js';
 import { debugLog } from './utils/debug.js';
 import { checkDatabaseIntegrity, rebuildHashIndex } from './utils/db-integrity-check.js';
+import { StreamableHTTPServerTransport } from './transports/streamable-http.js';
 
 // Initialize server
 const server = new Server(
@@ -117,6 +118,14 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 async function main() {
   const args = process.argv.slice(2);
   
+  // Check for --http or --both flags
+  const useHttp = args.includes('--http') || args.includes('--both');
+  const useBoth = args.includes('--both');
+  const useStdio = !args.includes('--http') || useBoth;
+  
+  // Remove transport flags from args
+  const cliArgs = args.filter(arg => arg !== '--http' && arg !== '--both');
+  
   // Initialize services (backup auto-configures from env vars)
   memoryService = initializeServices();
   
@@ -126,9 +135,9 @@ async function main() {
     config: {}
   };
   
-  if (args.length > 0) {
+  if (cliArgs.length > 0) {
     // CLI mode - check for integrity commands first
-    if (args[0] === 'check-integrity') {
+    if (cliArgs[0] === 'check-integrity') {
       const dbPath = process.env.MEMORY_DB || './memory.db';
       console.log('Running database integrity check...\n');
       const result = checkDatabaseIntegrity(dbPath);
@@ -151,14 +160,14 @@ async function main() {
       }
       
       process.exit(result.orphanedMemories.length > 0 ? 1 : 0);
-    } else if (args[0] === 'rebuild-index') {
+    } else if (cliArgs[0] === 'rebuild-index') {
       const dbPath = process.env.MEMORY_DB || './memory.db';
       rebuildHashIndex(dbPath);
       process.exit(0);
     }
     
     // CLI mode - handle tool execution
-    const [toolName, ...toolArgs] = args;
+    const [toolName, ...toolArgs] = cliArgs;
     
     if (!toolRegistry.hasTool(toolName)) {
       console.error(`Unknown tool: ${toolName}`);
@@ -176,10 +185,40 @@ async function main() {
       process.exit(1);
     }
   } else {
-    // MCP mode
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    debugLog('Simple Memory MCP server running on stdio');
+    // MCP mode - connect transport(s)
+    if (useHttp) {
+      // HTTP transport mode
+      const httpPort = parseInt(process.env.MCP_PORT || '3000', 10);
+      const httpHost = process.env.MCP_HOST || 'localhost';
+      
+      const httpTransport = new StreamableHTTPServerTransport({
+        port: httpPort,
+        host: httpHost
+      });
+      
+      try {
+        await server.connect(httpTransport);
+        console.log(`✅ Simple Memory MCP server running on HTTP: http://${httpHost}:${httpPort}/mcp`);
+      } catch (error) {
+        console.error('Failed to start HTTP transport:', error instanceof Error ? error.message : error);
+        if (error instanceof Error && error.stack) {
+          debugLog('Stack trace:', error.stack);
+        }
+        process.exit(1);
+      }
+    }
+    
+    if (useStdio) {
+      // Stdio transport mode (default or hybrid)
+      if (useBoth) {
+        debugLog('🔌 Hybrid mode: stdio + HTTP');
+        // Servers are already connected above in HTTP block
+      } else {
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        debugLog('🔌 Simple Memory MCP server running on stdio');
+      }
+    }
   }
 }
 
