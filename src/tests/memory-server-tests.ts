@@ -509,6 +509,107 @@ async function testUpdateNonExistentMemory(): Promise<void> {
 }
 
 /**
+ * Test search by IDs
+ */
+async function testSearchByIds(): Promise<void> {
+  // First, store some memories and capture their IDs
+  const memory1Result = await executeCommand(['store-memory', '--content', 'Memory with ID 1', '--tags', 'test-id']);
+  const memory1Output = parseJsonOutput(memory1Result.stdout);
+  
+  const memory2Result = await executeCommand(['store-memory', '--content', 'Memory with ID 2', '--tags', 'test-id']);
+  const memory2Output = parseJsonOutput(memory2Result.stdout);
+  
+  const memory3Result = await executeCommand(['store-memory', '--content', 'Memory with ID 3', '--tags', 'test-id']);
+  const memory3Output = parseJsonOutput(memory3Result.stdout);
+  
+  // Get all memories to find their IDs
+  const allResult = await executeCommand(['search-memory', '--tags', 'test-id']);
+  const allOutput = parseJsonOutput(allResult.stdout);
+  
+  if (!allOutput?.memories || allOutput.memories.length < 3) {
+    throw new Error('Failed to store test memories');
+  }
+  
+  // Get the IDs of the first and third memories
+  const id1 = allOutput.memories.find((m: any) => m.content === 'Memory with ID 1')?.id;
+  const id3 = allOutput.memories.find((m: any) => m.content === 'Memory with ID 3')?.id;
+  
+  if (!id1 || !id3) {
+    throw new Error('Could not find memory IDs');
+  }
+  
+  // Search by specific IDs
+  const searchResult = await executeCommand(['search-memory', '--ids', `${id1},${id3}`]);
+  const searchOutput = parseJsonOutput(searchResult.stdout);
+  
+  if (!searchOutput?.memories || searchOutput.memories.length !== 2) {
+    throw new Error(`Expected 2 memories, got ${searchOutput?.memories?.length || 0}`);
+  }
+  
+  const foundIds = searchOutput.memories.map((m: any) => m.id);
+  if (!foundIds.includes(id1) || !foundIds.includes(id3)) {
+    throw new Error('Did not find expected memories by ID');
+  }
+  
+  console.log(`✓ Found ${searchOutput.memories.length} memories by IDs`);
+  console.log(`✓ Verified IDs match requested IDs: ${id1}, ${id3}`);
+}
+
+/**
+ * Test export by IDs
+ */
+async function testExportByIds(): Promise<void> {
+  // First, store some memories
+  await executeCommand(['store-memory', '--content', 'Export test memory 1', '--tags', 'export-test']);
+  await executeCommand(['store-memory', '--content', 'Export test memory 2', '--tags', 'export-test']);
+  await executeCommand(['store-memory', '--content', 'Export test memory 3', '--tags', 'export-test']);
+  
+  // Get all memories to find their IDs
+  const allResult = await executeCommand(['search-memory', '--tags', 'export-test']);
+  const allOutput = parseJsonOutput(allResult.stdout);
+  
+  if (!allOutput?.memories || allOutput.memories.length < 3) {
+    throw new Error('Failed to store test memories for export');
+  }
+  
+  // Get the IDs of first two memories
+  const id1 = allOutput.memories[0].id;
+  const id2 = allOutput.memories[1].id;
+  
+  // Export by specific IDs
+  const exportPath = './test-export-by-ids.json';
+  const exportResult = await executeCommand(['export-memory', '--output', exportPath, '--ids', `${id1},${id2}`]);
+  const exportOutput = parseJsonOutput(exportResult.stdout);
+  
+  if (!exportOutput?.success) {
+    throw new Error('Export by IDs failed');
+  }
+  
+  if (exportOutput.totalMemories !== 2) {
+    throw new Error(`Expected 2 exported memories, got ${exportOutput.totalMemories}`);
+  }
+  
+  // Verify the exported file contains the correct memories
+  const { readFileSync, unlinkSync } = await import('fs');
+  const exportData = JSON.parse(readFileSync(exportPath, 'utf-8'));
+  
+  if (exportData.memories.length !== 2) {
+    throw new Error(`Expected 2 memories in export file, got ${exportData.memories.length}`);
+  }
+  
+  const exportedIds = exportData.memories.map((m: any) => m.id);
+  if (!exportedIds.includes(id1) || !exportedIds.includes(id2)) {
+    throw new Error('Exported memories do not match requested IDs');
+  }
+  
+  // Clean up
+  unlinkSync(exportPath);
+  
+  console.log(`✓ Exported ${exportOutput.totalMemories} memories by IDs`);
+  console.log(`✓ Verified exported memories match requested IDs`);
+}
+
+/**
  * Main test runner
  */
 async function runAllTests(): Promise<void> {
@@ -531,7 +632,9 @@ async function runAllTests(): Promise<void> {
     { name: 'Update Non-Existent Memory', fn: testUpdateNonExistentMemory },
     { name: 'Delete Memory by Tag', fn: testDeleteMemoryByTag },
     { name: 'Search with Limit', fn: testSearchWithLimit },
-    { name: 'Improved Search (OR + BM25)', fn: testImprovedSearch }
+    { name: 'Improved Search (OR + BM25)', fn: testImprovedSearch },
+    { name: 'Search by IDs', fn: testSearchByIds },
+    { name: 'Export by IDs', fn: testExportByIds }
   ];
 
   const results: TestResult[] = [];

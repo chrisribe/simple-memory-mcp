@@ -17,7 +17,14 @@ export function parseCliArgs(args: string[]) {
     result.tags = (rawArgs.tags as string).split(',').map((tag: string) => tag.trim());
   }
   if (rawArgs.ids) {
-    result.ids = (rawArgs.ids as string).split(',').map((id: string) => parseInt(id.trim(), 10));
+    // Handle both string (comma-separated) and number (single value)
+    if (typeof rawArgs.ids === 'string') {
+      result.ids = rawArgs.ids.split(',').map((id: string) => parseInt(id.trim(), 10));
+    } else if (typeof rawArgs.ids === 'number') {
+      result.ids = [rawArgs.ids];
+    } else if (Array.isArray(rawArgs.ids)) {
+      result.ids = rawArgs.ids.map((id: any) => typeof id === 'number' ? id : parseInt(id, 10));
+    }
   }
   if (rawArgs.limit) {
     result.limit = rawArgs.limit; // Already a number
