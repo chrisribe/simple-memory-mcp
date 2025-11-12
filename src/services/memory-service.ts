@@ -343,6 +343,34 @@ export class MemoryService {
   }
 
   /**
+   * Search memories by specific IDs
+   * Private helper method for ID-based search
+   */
+  private searchByIds(ids: number[]): any[] {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    const placeholders = ids.map(() => '?').join(',');
+    const stmt = this.db.prepare(`
+      SELECT * FROM memories 
+      WHERE id IN (${placeholders})
+      ORDER BY created_at DESC
+    `);
+    
+    const idResults = stmt.all(...ids);
+    
+    // Hydrate with tags
+    return idResults.map((row: any) => {
+      const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
+      return {
+        ...row,
+        tags: tagRows.map(t => t.tag)
+      };
+    });
+  }
+
+  /**
    * Search memories by content or tags
    */
   search(
@@ -395,28 +423,7 @@ export class MemoryService {
 
     if (ids && ids.length > 0) {
       // Search by specific IDs
-      // Query for all specified IDs
-      if (!this.db) {
-        throw new Error('Database not initialized');
-      }
-      
-      const placeholders = ids.map(() => '?').join(',');
-      const stmt = this.db.prepare(`
-        SELECT * FROM memories 
-        WHERE id IN (${placeholders})
-        ORDER BY created_at DESC
-      `);
-      
-      const idResults = stmt.all(...ids);
-      
-      // Hydrate with tags
-      results = idResults.map((row: any) => {
-        const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
-        return {
-          ...row,
-          tags: tagRows.map(t => t.tag)
-        };
-      });
+      results = this.searchByIds(ids);
     } else if (query) {
       // Use FTS for text search
       let ftsResults: any[];
