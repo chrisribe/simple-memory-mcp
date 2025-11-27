@@ -105,10 +105,112 @@ src/tools/get-memory/
 
 ---
 
-## Phase 3: Code Execution Mode (Optional)
+## Phase 3: GraphQL Single-Tool Interface (Recommended)
+
+**Effort:** Half day  
+**Goal:** Replace 6 MCP tools with 1 GraphQL endpoint - reduces tool definition bloat + enables batched queries
+
+### Concept
+
+One MCP tool that accepts GraphQL queries. Schema embedded in tool description = LLM knows full API from single tool definition.
+
+### New tool: memory-graphql
+
+```typescript
+{
+  name: "memory-graphql",
+  description: `Execute GraphQL queries against the memory database.
+    
+Schema:
+  type Query {
+    memories(search: String, tags: [String], limit: Int, summaryOnly: Boolean): [Memory!]!
+    memory(hash: String!): Memory
+    stats: Stats!
+  }
+  
+  type Mutation {
+    store(content: String!, tags: [String]): Memory!
+    update(hash: String!, content: String, tags: [String]): Memory!
+    delete(hash: String, tag: String): DeleteResult!
+  }
+  
+  type Memory { hash, content, preview, tags, createdAt, relevanceScore }
+  type Stats { totalMemories, totalTags, databaseSize }
+
+Example queries:
+  { memories(search: "typescript", limit: 5) { hash preview tags } }
+  { memory(hash: "abc123") { content tags } }
+  mutation { store(content: "...", tags: ["tag1"]) { hash } }`,
+  
+  inputSchema: {
+    query: { type: "string", description: "GraphQL query or mutation" },
+    variables: { type: "object", description: "Optional variables" }
+  }
+}
+```
+
+### Why GraphQL Over Code Execution
+
+| Aspect | GraphQL | Code Execution |
+|--------|---------|----------------|
+| Security | Safe (structured queries) | Risky (arbitrary code) |
+| LLM familiarity | High (lots of training data) | Medium |
+| Batching | Native (`{ a: memories(...) b: stats }`) | Manual |
+| Field selection | Built-in (request only what you need) | Manual |
+| Implementation | Standard libraries | Custom sandbox |
+
+### Implementation
+
+1. Add packages: `graphql`, `@graphql-tools/schema`
+2. Define schema (maps to existing `memory-service.ts`)
+3. Create resolvers (thin wrappers around service methods)
+4. Single MCP tool calls GraphQL executor
+
+### Files to create/modify
+
+| File | Change |
+|------|--------|
+| `src/graphql/schema.ts` | GraphQL type definitions |
+| `src/graphql/resolvers.ts` | Map to memory-service methods |
+| `src/tools/memory-graphql/` | New MCP tool |
+| `package.json` | Add graphql dependencies |
+
+### Benefits
+
+- **1 tool vs 6** - Reduces tool definition tokens by ~80%
+- **Batched queries** - Multiple operations in single call
+- **Field selection** - LLM requests only fields it needs
+- **No security concerns** - Unlike code execution, GraphQL is sandboxed by design
+- **HTTP-ready** - Same schema works for web server branch
+
+### Example Usage
+
+```graphql
+# Discovery + drill-down in ONE call
+{
+  search: memories(search: "typescript", summaryOnly: true) { 
+    hash 
+    preview 
+    tags 
+  }
+  recent: memories(limit: 3) { 
+    hash 
+    createdAt 
+  }
+  stats { 
+    totalMemories 
+  }
+}
+```
+
+---
+
+## Phase 4: Code Execution Mode (Optional)
 
 **Effort:** 2-3 days  
-**Goal:** Single tool call that runs code locally, returns only summary
+**Goal:** Single tool call that runs arbitrary code locally, returns only summary
+
+> **Note:** Consider Phase 3 (GraphQL) first - it solves most problems without the security complexity.
 
 ### New tool: memory-query
 
@@ -147,11 +249,11 @@ memoryQuery({
 
 ### Risk
 
-Complexity and security surface. Only implement if Phase 1-2 prove insufficient.
+Complexity and security surface. Only implement if Phase 3 (GraphQL) proves insufficient.
 
 ---
 
-## Phase 4: Library Mode (Future)
+## Phase 5: Library Mode (Future)
 
 **Effort:** 1 day  
 **Goal:** Bypass MCP entirely, expose as importable SDK
@@ -169,11 +271,12 @@ LLM writes code that imports the SDK directly, runs via terminal, no MCP protoco
 
 ## Success Metrics
 
-| Metric | Current | Phase 1 | Phase 2 |
-|--------|---------|---------|---------|
-| Tokens per search (10 results) | ~2000 | ~400 | ~400 + 200/drill-down |
-| Tool calls for typical flow | 1 | 1 | 2 (smaller each) |
-| Backwards compatible | - | ✅ | ✅ |
+| Metric | Current | Phase 1 | Phase 2 | Phase 3 (GraphQL) |
+|--------|---------|---------|---------|-------------------|
+| Tool definitions | 6 tools (~1200 tokens) | 6 tools | 7 tools | **1 tool (~400 tokens)** |
+| Tokens per search (10 results) | ~2000 | ~400 | ~400 + 200/drill-down | ~400 (field selection) |
+| Tool calls for typical flow | 1 | 1 | 2 (smaller each) | **1 (batched)** |
+| Backwards compatible | - | ✅ | ✅ | ❌ (new interface) |
 
 ---
 
@@ -182,18 +285,95 @@ LLM writes code that imports the SDK directly, runs via terminal, no MCP protoco
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Phase 1: summaryOnly flag                            │
-│    └─→ Measure: Is context still a problem?             │
+│    └─→ Quick win, backwards compatible                  │
 │                                                         │
 │ 2. Phase 2: get-memory tool                             │
 │    └─→ Only if search-then-read pattern is common       │
 │                                                         │
-│ 3. Phase 3: memory-query                                │
-│    └─→ Only if compounding is measurable issue          │
+│ 3. Phase 3: GraphQL single-tool (RECOMMENDED)           │
+│    └─→ Best balance of power vs complexity              │
+│    └─→ Works with existing web-server branch            │
 │                                                         │
-│ 4. Phase 4: SDK mode                                    │
+│ 4. Phase 4: Code execution                              │
+│    └─→ Only if GraphQL proves insufficient              │
+│                                                         │
+│ 5. Phase 5: SDK mode                                    │
 │    └─→ Only if MCP overhead itself is the bottleneck    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+**Recommended path:** Phase 1 → Phase 3 (skip Phase 2 if going GraphQL)
+
+---
+
+## Vision: "1 MCP = 1 Skill" Pattern
+
+The GraphQL approach points to a broader architectural shift for MCP tooling.
+
+### Current MCP Model (Broken at Scale)
+
+```
+MCP Server: "Here are ALL 47 tools I have"
+  ↓ 
+LLM Context: [tool1, tool2, ... tool47] (~15K tokens)
+  ↓
+LLM: Gets dumber trying to pick from 47 options
+```
+
+### Proposed Skill Model
+
+```
+MCP Server: "I am the Memory skill. Here's 1 tool with introspection."
+  ↓
+LLM: Queries schema when needed → learns capabilities on-demand
+  ↓
+LLM: Executes precise query → gets only what it asked for
+```
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    MCP Registry                          │
+├─────────────────────────────────────────────────────────┤
+│  memory-skill     → 1 GraphQL tool → N operations       │
+│  gdrive-skill     → 1 GraphQL tool → N operations       │
+│  salesforce-skill → 1 GraphQL tool → N operations       │
+│  slack-skill      → 1 GraphQL tool → N operations       │
+└─────────────────────────────────────────────────────────┘
+
+LLM sees: 4 tool definitions (not 47)
+LLM explores: Introspection on skills it needs
+LLM executes: Batched, field-selected queries
+```
+
+### Why This Works
+
+| Current Problem | Skill Model Solution |
+|-----------------|---------------------|
+| 150K tokens of tool defs | ~300 tokens per skill |
+| Models get dumber with more tools | Fewer tools = sharper decisions |
+| No progressive disclosure | Introspection = on-demand discovery |
+| Round-trip compounding | Batched GraphQL queries |
+| Each tool = separate schema | One schema per skill domain |
+
+### simple-memory as Reference Implementation
+
+```
+simple-memory-mcp (current): 6 tools, ~1200 tokens
+simple-memory-skill (goal):  1 tool,  ~400 tokens + introspection
+```
+
+This pattern could be proposed to the MCP community as a design guideline for building scalable, context-efficient tool servers.
+
+### Not Groundbreaking, Just... Obvious?
+
+This is essentially:
+- GraphQL's original pitch (2015): "Ask for what you need"
+- Package managers: "Install what you need, when you need it"  
+- REST → GraphQL evolution: Already happened for APIs
+
+MCP just needs to learn the same lesson. The "innovation" is applying existing patterns to a protocol that ignored them.
 
 ---
 
