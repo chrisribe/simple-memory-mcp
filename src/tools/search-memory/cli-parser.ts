@@ -7,7 +7,9 @@ export function parseCliArgs(args: string[]) {
   // PHASE 2: Validate and transform (command-specific logic)
   const result: any = {
     includeRelated: false,
-    relationshipDepth: 1
+    relationshipDepth: 1,
+    summaryOnly: false,
+    contentPreview: 100
   };
   
   if (rawArgs.query) {
@@ -39,6 +41,14 @@ export function parseCliArgs(args: string[]) {
     const relevance = rawArgs.minRelevance as number;
     // Clamp between 0-1
     result.minRelevance = Math.min(Math.max(relevance, 0), 1);
+  }
+  if (rawArgs.summary !== undefined || rawArgs.summaryOnly !== undefined) {
+    result.summaryOnly = rawArgs.summary || rawArgs.summaryOnly; // Already a boolean
+  }
+  if (rawArgs.previewLength !== undefined || rawArgs.contentPreview !== undefined) {
+    const length = (rawArgs.previewLength || rawArgs.contentPreview) as number;
+    // Clamp between 0-500
+    result.contentPreview = Math.min(Math.max(length, 0), 500);
   }
   
   return result;

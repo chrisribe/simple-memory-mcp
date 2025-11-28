@@ -65,6 +65,18 @@ Search silently and incorporate findings naturally into responses.`,
           description: 'Minimum relevance score (0-1). Filters results by BM25 ranking. Higher values (e.g., 0.7-0.9) return only highly relevant matches.',
           minimum: 0,
           maximum: 1
+        },
+        summaryOnly: {
+          type: 'boolean',
+          description: 'Return compact summaries instead of full content. Reduces token usage by ~80%. Use get-memory to retrieve full content by hash.',
+          default: false
+        },
+        contentPreview: {
+          type: 'number',
+          description: 'Number of characters to include in preview when summaryOnly=true (default: 100)',
+          default: 100,
+          minimum: 0,
+          maximum: 500
         }
       }
     }
