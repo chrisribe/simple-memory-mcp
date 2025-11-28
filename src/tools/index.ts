@@ -10,6 +10,7 @@ import { updateMemoryTool } from './update-memory/index.js';
 import { memoryStatsTool } from './memory-stats/index.js';
 import { exportMemoryTool } from './export-memory/index.js';
 import { importMemoryTool } from './import-memory/index.js';
+import { memoryGraphqlTool } from './memory-graphql/index.js';
 
 export class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
@@ -24,6 +25,8 @@ export class ToolRegistry {
     this.registerTool(exportMemoryTool);
     this.registerTool(importMemoryTool);
     this.registerTool(deleteMemoryTool);
+    // GraphQL unified interface - single tool that can do everything above
+    this.registerTool(memoryGraphqlTool);
   }
 
   private registerTool(tool: Tool): void {
