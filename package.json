@@ -1,6 +1,6 @@
 {
   "name": "simple-memory-mcp",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "Simple memory MCP server for storing and retrieving memories with tags",
   "main": "dist/index.js",
   "type": "module",
@@ -23,6 +23,8 @@
     "version:major": "node scripts/bump-version.js major",
     "prepublishOnly": "npm run build",
     "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
+    "start:both": "node dist/index.js --both",
     "cli": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "npm run build && node dist/tests/memory-server-tests.js",
