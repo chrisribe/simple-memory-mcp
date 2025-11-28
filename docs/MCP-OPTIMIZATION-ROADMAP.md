@@ -14,94 +14,93 @@ This plan adds progressive disclosure to reduce token usage while maintaining ba
 
 ---
 
-## Phase 1: Summary Mode
+## Phase 1: Summary Mode ✅ COMPLETED
 
 **Effort:** 1-2 hours  
-**Goal:** Reduce search result size by 80%+
+**Status:** ✅ Implemented 2025-11-27  
+**Goal:** Reduce search result size by ~75%
 
 ### Changes to search-memory tool
 
-Add new parameters:
+Added new parameters:
 - `summaryOnly: boolean` (default: false for backwards compat)
 - `contentPreview: number` (chars to include, default: 100)
 
-When `summaryOnly=true`, return:
+When `summaryOnly=true`, returns:
 ```json
 {
   "hash": "abc123...",
   "title": "First line of content (max 80 chars)",
   "tags": ["tag1", "tag2"],
   "createdAt": "2025-11-27T...",
-  "relevanceScore": 0.85,
+  "relevance": 0.85,
   "preview": "First 100 chars of content..."
 }
 ```
 
 **NOT** full content.
 
-### Files to modify
+### Files modified
 
 | File | Change |
 |------|--------|
-| `src/tools/search-memory/executor.ts` | Add summary transformation logic |
-| `src/tools/search-memory/index.ts` | Add parameters to tool schema |
-| `src/tools/search-memory/cli-parser.ts` | Add `--summary`, `--preview-length` flags |
-| `src/services/memory-service.ts` | Optional: add summary query variant |
+| `src/tools/search-memory/executor.ts` | Added `toSummary()` transformation, `MemorySummary` interface |
+| `src/tools/search-memory/index.ts` | Added `summaryOnly`, `contentPreview` to tool schema |
+| `src/tools/search-memory/cli-parser.ts` | Added `--summary`, `--previewLength` flags |
 
-### Test
+### Test Results
 
-Compare token count:
-- Full search (10 results): ~2000 tokens
-- Summary search (10 results): ~400 tokens
+| Mode | Size | ~Tokens | Reduction |
+|------|------|---------|-----------|
+| Full (5 results) | 21,636 bytes | ~5,400 | - |
+| Summary (5 results) | 5,320 bytes | ~1,330 | **~75%** |
 
 ---
 
-## Phase 2: getMemory Tool
+## Phase 2: Hash Lookup ✅ COMPLETED
 
-**Effort:** Half day  
-**Goal:** Enable drill-down to full content without loading all results
+**Effort:** 30 minutes  
+**Status:** ✅ Implemented 2025-11-27  
+**Goal:** Enable drill-down to full content by hash
 
-### New tool: get-memory
+### Decision: Parameter vs New Tool
 
-```typescript
-interface GetMemoryInput {
-  hash: string;
-}
+Chose to add `hash` parameter to `search-memory` instead of creating separate `get-memory` tool:
+- **KISS principle** - No new tool, no new files
+- **Zero context bloat** - Reuses existing tool definition
+- **Natural fit** - "search by hash" is semantically reasonable
 
-interface GetMemoryOutput {
-  memory: MemoryRecord;
-}
-```
+### Changes to search-memory tool
 
-Single memory retrieval by hash.
+Added new parameter:
+- `hash: string` - When provided, bypasses all other search parameters and returns single memory
 
-### Files to create
-
-```
-src/tools/get-memory/
-├── index.ts
-├── executor.ts
-└── cli-parser.ts
-```
-
-### Files to update
+### Files modified
 
 | File | Change |
 |------|--------|
-| `src/tools/index.ts` | Register new tool |
-| search-memory description | "Returns summaries. Use get-memory for full content." |
+| `src/tools/search-memory/executor.ts` | Added hash lookup at start of execute() |
+| `src/tools/search-memory/index.ts` | Added `hash` parameter to tool schema |
+| `src/tools/search-memory/cli-parser.ts` | Added `--hash` flag |
+| `src/utils/cli-parser.ts` | Fixed bug: leading zeros no longer parsed as numbers |
 
 ### Usage Pattern
 
-```
-1. search-memory --query "typescript" --summary
-   → Returns 10 summaries (~400 tokens)
+```bash
+# 1. Search with summaries
+search-memory --query "typescript" --summary
+# → Returns 10 summaries (~400 tokens)
 
-2. LLM picks relevant ones
+# 2. LLM picks relevant one
 
-3. get-memory --hash abc123
-   → Returns full content of ONE memory (~200 tokens)
+# 3. Get full content by hash
+search-memory --hash abc123def456...
+# → Returns full content of ONE memory (~200 tokens)
 ```
+
+### Bug Fixed
+
+CLI parser was converting all-digit hashes (like `00000000...`) to numbers. Fixed by excluding strings with leading zeros from numeric parsing.
 
 ---
 
@@ -271,10 +270,10 @@ LLM writes code that imports the SDK directly, runs via terminal, no MCP protoco
 
 ## Success Metrics
 
-| Metric | Current | Phase 1 | Phase 2 | Phase 3 (GraphQL) |
+| Metric | Current | Phase 1 ✅ | Phase 2 ✅ | Phase 3 (GraphQL) |
 |--------|---------|---------|---------|-------------------|
-| Tool definitions | 6 tools (~1200 tokens) | 6 tools | 7 tools | **1 tool (~400 tokens)** |
-| Tokens per search (10 results) | ~2000 | ~400 | ~400 + 200/drill-down | ~400 (field selection) |
+| Tool definitions | 7 tools | 7 tools | 7 tools | **1 tool (~400 tokens)** |
+| Tokens per search (10 results) | ~2000 | **~500** | ~500 + 200/drill-down | ~400 (field selection) |
 | Tool calls for typical flow | 1 | 1 | 2 (smaller each) | **1 (batched)** |
 | Backwards compatible | - | ✅ | ✅ | ❌ (new interface) |
 
@@ -284,11 +283,11 @@ LLM writes code that imports the SDK directly, runs via terminal, no MCP protoco
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 1. Phase 1: summaryOnly flag                            │
+│ 1. Phase 1: summaryOnly flag              ✅ DONE       │
 │    └─→ Quick win, backwards compatible                  │
 │                                                         │
-│ 2. Phase 2: get-memory tool                             │
-│    └─→ Only if search-then-read pattern is common       │
+│ 2. Phase 2: hash parameter                ✅ DONE       │
+│    └─→ Added to search-memory (not separate tool)       │
 │                                                         │
 │ 3. Phase 3: GraphQL single-tool (RECOMMENDED)           │
 │    └─→ Best balance of power vs complexity              │
@@ -302,7 +301,7 @@ LLM writes code that imports the SDK directly, runs via terminal, no MCP protoco
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Recommended path:** Phase 1 → Phase 3 (skip Phase 2 if going GraphQL)
+**Current status:** Phase 1 & 2 complete. Ready for Phase 3 (GraphQL) when needed.
 
 ---
 
@@ -396,4 +395,5 @@ This roadmap applies that principle incrementally to simple-memory.
 
 ---
 
-*Created: 2025-11-27*
+*Created: 2025-11-27*  
+*Phase 1 & 2 completed: 2025-11-27*

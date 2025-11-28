@@ -2,6 +2,7 @@ import type { ToolContext } from '../../types/tools.js';
 import type { MemoryEntry } from '../../services/memory-service.js';
 
 interface SearchMemoryArgs {
+  hash?: string;
   query?: string;
   tags?: string[];
   limit?: number;
@@ -60,6 +61,35 @@ function toSummary(memory: MemoryEntry, previewLength: number): MemorySummary {
 }
 
 export async function execute(args: SearchMemoryArgs, context: ToolContext): Promise<SearchMemoryResult> {
+  // Direct hash lookup - bypasses all other search parameters
+  if (args.hash) {
+    const hash = args.hash.trim().toLowerCase();
+    
+    // Validate hash format (MD5 = 32 hex characters)
+    if (!/^[a-f0-9]{32}$/.test(hash)) {
+      return {
+        memories: [],
+        total: 0,
+        error: 'Invalid hash format. Expected 32 character MD5 hex string.'
+      } as SearchMemoryResult & { error: string };
+    }
+    
+    const memory = context.memoryService.getByHash(hash);
+    
+    if (!memory) {
+      return {
+        memories: [],
+        total: 0,
+        error: `Memory not found with hash: ${hash}`
+      } as SearchMemoryResult & { error: string };
+    }
+    
+    return {
+      memories: [memory],
+      total: 1
+    };
+  }
+
   // Use provided limit or default to 10, ensure it's at least 1
   const limit = Math.max(1, args.limit || 10);
   const summaryOnly = args.summaryOnly || false;

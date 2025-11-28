@@ -12,6 +12,11 @@ export function parseCliArgs(args: string[]) {
     contentPreview: 100
   };
   
+  // Hash lookup (direct retrieval by hash)
+  if (rawArgs.hash) {
+    result.hash = rawArgs.hash as string;
+  }
+  
   if (rawArgs.query) {
     result.query = rawArgs.query;
   }
@@ -19,17 +24,17 @@ export function parseCliArgs(args: string[]) {
     result.tags = (rawArgs.tags as string).split(',').map((tag: string) => tag.trim());
   }
   if (rawArgs.limit) {
-    result.limit = rawArgs.limit; // Already a number
+    result.limit = parseInt(rawArgs.limit as string, 10);
   }
   if (rawArgs.includeRelated !== undefined) {
     result.includeRelated = rawArgs.includeRelated; // Already a boolean
   }
   if (rawArgs.relationshipDepth !== undefined) {
-    const depth = rawArgs.relationshipDepth as number;
+    const depth = parseInt(rawArgs.relationshipDepth as string, 10);
     result.relationshipDepth = Math.min(Math.max(depth, 1), 3); // Clamp between 1-3
   }
   if (rawArgs.daysAgo !== undefined) {
-    result.daysAgo = rawArgs.daysAgo; // Already a number
+    result.daysAgo = parseInt(rawArgs.daysAgo as string, 10);
   }
   if (rawArgs.startDate) {
     result.startDate = rawArgs.startDate as string;
@@ -38,7 +43,7 @@ export function parseCliArgs(args: string[]) {
     result.endDate = rawArgs.endDate as string;
   }
   if (rawArgs.minRelevance !== undefined) {
-    const relevance = rawArgs.minRelevance as number;
+    const relevance = parseFloat(rawArgs.minRelevance as string);
     // Clamp between 0-1
     result.minRelevance = Math.min(Math.max(relevance, 0), 1);
   }
@@ -46,7 +51,7 @@ export function parseCliArgs(args: string[]) {
     result.summaryOnly = rawArgs.summary || rawArgs.summaryOnly; // Already a boolean
   }
   if (rawArgs.previewLength !== undefined || rawArgs.contentPreview !== undefined) {
-    const length = (rawArgs.previewLength || rawArgs.contentPreview) as number;
+    const length = parseInt((rawArgs.previewLength || rawArgs.contentPreview) as string, 10);
     // Clamp between 0-500
     result.contentPreview = Math.min(Math.max(length, 0), 500);
   }

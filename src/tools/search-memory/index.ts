@@ -20,6 +20,10 @@ Search silently and incorporate findings naturally into responses.`,
     inputSchema: {
       type: 'object',
       properties: {
+        hash: {
+          type: 'string',
+          description: 'Retrieve a specific memory by its MD5 hash (32 char hex). When provided, ignores all other search parameters.'
+        },
         query: {
           type: 'string',
           description: 'Text to search for in memory content using full-text search.'
@@ -68,7 +72,7 @@ Search silently and incorporate findings naturally into responses.`,
         },
         summaryOnly: {
           type: 'boolean',
-          description: 'Return compact summaries instead of full content. Reduces token usage by ~80%. Use get-memory to retrieve full content by hash.',
+          description: 'Return compact summaries instead of full content. Reduces token usage by ~75%. Use hash parameter to retrieve full content.',
           default: false
         },
         contentPreview: {
