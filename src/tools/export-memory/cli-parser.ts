@@ -16,7 +16,7 @@ export function parseCliArgs(args: string[]) {
   }
   
   if (rawArgs.daysAgo !== undefined) {
-    result.daysAgo = rawArgs.daysAgo; // Already a number
+    result.daysAgo = parseInt(rawArgs.daysAgo as string, 10);
   }
   
   if (rawArgs.startDate) {
@@ -28,7 +28,7 @@ export function parseCliArgs(args: string[]) {
   }
   
   if (rawArgs.limit !== undefined) {
-    result.limit = rawArgs.limit; // Already a number
+    result.limit = parseInt(rawArgs.limit as string, 10);
   }
   
   if (rawArgs.source) {

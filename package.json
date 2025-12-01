@@ -27,19 +27,21 @@
     "start:both": "node dist/index.js --both",
     "cli": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "npm run build && node dist/tests/memory-server-tests.js",
+    "test": "npm run build && node dist/tests/graphql-comprehensive-test.js",
     "test:perf": "npm run build && node dist/tests/performance-test.js",
     "test:migration": "npm run build && node dist/tests/migration-test.js",
     "test:export-import": "npm run build && node dist/tests/export-import-test.js",
-    "test:all": "npm run test && npm run test:perf && npm run test:export-import",
+    "test:graphql-perf": "npm run build && node dist/tests/graphql-performance-test.js",
     "benchmark": "npm run build && node dist/tests/performance-benchmark.js",
     "link": "npm run build && npm link",
     "unlink": "npm unlink -g"
   },
   "dependencies": {
+    "@graphql-tools/schema": "^10.0.29",
     "@modelcontextprotocol/sdk": "^1.17.3",
     "better-sqlite3": "^12.2.0",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "graphql": "^16.12.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

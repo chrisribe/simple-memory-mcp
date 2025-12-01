@@ -30,15 +30,8 @@ export function parseCommandLineArgs(args: string[]): ParsedArgs {
                 } else if (lowerValue === 'false') {
                     parsed[flagName] = false;
                 } else {
-                    // Try to parse as number
-                    const numValue = Number(value);
-                    // Only treat as number if it's valid AND the original string looks numeric
-                    if (!isNaN(numValue) && value.trim() !== '' && /^-?\d+(\.\d+)?$/.test(value.trim())) {
-                        parsed[flagName] = numValue;
-                    } else {
-                        // Everything else is a string
-                        parsed[flagName] = value;
-                    }
+                    // Keep as string - let tool-specific parsers handle type conversion
+                    parsed[flagName] = value;
                 }
                 i += 2;
             } else {

@@ -5,17 +5,19 @@ import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { MemoryService } from './services/memory-service.js';
+import { getDatabasePath } from './utils/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = parseInt(process.env.WEB_PORT || '3000', 10);
-const dbPath = process.env.MEMORY_DB || './memory.db';
+const dbPath = getDatabasePath().path;
 
-// Validate database exists
+// Validate database exists (web server is read-focused, don't auto-create)
 if (!existsSync(dbPath)) {
   console.error(`❌ Error: Database not found at: ${dbPath}`);
-  console.error(`\nPlease set MEMORY_DB environment variable or create the database first.`);
+  console.error(`\n   The web browser requires an existing database.`);
+  console.error(`   Run the MCP server first to create memories, then use the web browser.\n`);
   process.exit(1);
 }
 

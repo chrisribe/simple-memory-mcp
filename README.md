@@ -29,12 +29,14 @@ Perfect for AI assistants that need to remember context across conversations, st
 
 | Operation | Average Time | Throughput |
 |-----------|--------------|------------|
-| Store Memory (1KB) | 0.1ms | ~10,000 ops/sec |
-| Tag Search | 0.18ms | ~5,500 ops/sec |
-| Full-Text Search | 0.14ms | ~7,000 ops/sec |
-| Bulk Relationships | 0.26ms | ~3,800 ops/sec |
+| Store Memory (1KB) | 0.05ms | ~20,000 ops/sec |
+| Full-Text Search | 0.08ms | ~13,000 ops/sec |
+| Tag Search | 0.22ms | ~4,500 ops/sec |
+| Bulk Relationships (10) | 0.29ms | ~3,500 ops/sec |
 
 **All operations complete in sub-millisecond timeframes** with optimized indexes and prepared statements.
+
+> 📏 **Reproduce these numbers:** Run `npm run benchmark` after setup. Results vary by hardware - tested on NVMe SSD with Node.js 20+.
 
 
 ---
@@ -132,172 +134,154 @@ The assistant stores memories silently and retrieves them when relevant, creatin
 
 ### Command Line Interface
 
-You can also use the CLI directly:
+The CLI uses GraphQL for all operations:
 
 ```bash
 # Store a memory
-simple-memory store-memory --content "Your content here" --tags "tag1,tag2"
+simple-memory memory-graphql --query 'mutation { store(content: "Your content", tags: ["tag1", "tag2"]) { hash } }'
 
 # Search by content
-simple-memory search-memory --query "search term"
+simple-memory memory-graphql --query '{ memories(query: "search term", limit: 5) { hash title tags } }'
 
-# Search by tags
-simple-memory search-memory --tags "tag1,tag2"
+# Search by tags  
+simple-memory memory-graphql --query '{ memories(tags: ["tag1"], limit: 10) { hash title content } }'
 
-# Search with relevance filtering (0-1 scale)
-simple-memory search-memory --query "architecture" --min-relevance 0.7
-
-# Search memories from last week
-simple-memory search-memory --query "project" --days-ago 7
-
-# Search memories from specific date range
-simple-memory search-memory --start-date "2025-01-01" --end-date "2025-01-31"
+# Get full content by hash
+simple-memory memory-graphql --query '{ memory(hash: "abc123...") { content tags createdAt } }'
 
 # View statistics
-simple-memory memory-stats
+simple-memory memory-graphql --query '{ stats { totalMemories totalRelationships dbSize } }'
 
 # Update a memory
-simple-memory update-memory --hash "abc123..." --content "Updated content" --tags "new,tags"
+simple-memory memory-graphql --query 'mutation { update(hash: "abc123...", content: "New content", tags: ["new"]) { hash } }'
 
-# Delete by tag
-simple-memory delete-memory --tag "old-notes"
+# Delete by hash or tag
+simple-memory memory-graphql --query 'mutation { delete(hash: "abc123...") { deletedCount } }'
+simple-memory memory-graphql --query 'mutation { delete(tag: "old-notes") { deletedCount } }'
+
+# Batch multiple operations in one call
+simple-memory memory-graphql --query '{
+  recent: memories(limit: 5) { hash title }
+  tagged: memories(tags: ["important"]) { hash title }
+  stats { totalMemories }
+}'
 ```
 
 ---
 
 ## 🛠️ Available Tools
 
-### `store-memory`
-Store content with optional tags.
+Simple Memory exposes **3 MCP tools** - a unified GraphQL interface plus import/export:
 
-**🧠 Auto-Capture:** This tool is enhanced with guidelines that encourage your AI assistant to proactively store important information during conversations without explicit requests. The assistant learns to:
-- Capture preferences, decisions, and facts automatically
-- Store silently without announcing
+### `memory-graphql`
+**The primary tool** - handles all memory operations via GraphQL queries and mutations.
+
+**🧠 Auto-Capture:** This tool includes behavioral guidance that encourages your AI assistant to:
+- Proactively search memories at conversation start
+- Store important information silently (preferences, decisions, facts)
 - Use descriptive tags for easy retrieval
-- Link related memories intelligently
+- Return only needed fields for efficiency
 
 **Parameters:**
-- `content` (string, required) - The text content to store
-- `tags` (array, optional) - Tags to associate with the memory
-- `autoLink` (boolean, optional) - Auto-link to similar memories (default: true)
+- `query` (string, required) - GraphQL query or mutation
+- `variables` (object, optional) - Variables for parameterized queries
 
-**Example:**
-```json
-{
-  "content": "Remember to use TypeScript for all new projects",
-  "tags": ["coding", "best-practices"],
-  "autoLink": true
+**Schema Overview:**
+```graphql
+type Query {
+  memories(query: String, tags: [String], limit: Int, summaryOnly: Boolean): [Memory!]!
+  memory(hash: String!): Memory           # Get full content by hash
+  related(hash: String!, limit: Int): [Memory!]!
+  stats: Stats!
+}
+
+type Mutation {
+  store(content: String!, tags: [String]): StoreResult!
+  update(hash: String!, content: String!, tags: [String]): UpdateResult!
+  delete(hash: String, tag: String): DeleteResult!
+}
+
+type Memory {
+  hash: String!
+  content: String!
+  title: String           # First 100 chars
+  preview: String         # First 200 chars  
+  tags: [String!]!
+  createdAt: String!
+  relevance: Float        # BM25 score (search only)
 }
 ```
 
-### `search-memory`
-Search stored memories by content or tags, with optional time range filtering.
+**Example Queries:**
+```graphql
+# Efficient search (summaries only)
+{ memories(query: "typescript", summaryOnly: true) { hash title tags } }
 
-**💡 Proactive Usage:** Enhanced with guidance for your AI assistant to search memories proactively at conversation start or when relevant topics arise, providing personalized context-aware responses.
+# Then get full content for specific memory
+{ memory(hash: "abc123...") { content tags createdAt } }
+
+# Store with auto-generated hash
+mutation { store(content: "Remember this", tags: ["note"]) { success hash } }
+
+# Batch multiple operations
+{
+  search: memories(query: "mcp", limit: 3) { hash title }
+  recent: memories(limit: 5) { hash createdAt }
+  stats { totalMemories }
+}
+```
+
+### `export-memory`
+Export memories to JSON file for backup or sharing.
 
 **Parameters:**
-- `query` (string, optional) - Text to search for in content
+- `output` (string, required) - Output file path
 - `tags` (array, optional) - Filter by tags
-- `limit` (number, optional) - Max results to return (default: 10)
-- `includeRelated` (boolean, optional) - Include related memories (default: false)
-- `minRelevance` (number, optional) - Minimum relevance score (0-1). Filters by BM25 ranking. Higher values (0.7-0.9) return only highly relevant matches. Useful for LLM context loading.
-- `daysAgo` (number, optional) - Filter memories created within last N days (e.g., 7 for last week)
-- `startDate` (string, optional) - Filter memories created on or after this date (ISO 8601: YYYY-MM-DD)
-- `endDate` (string, optional) - Filter memories created on or before this date (ISO 8601: YYYY-MM-DD)
+- `daysAgo` (number, optional) - Export memories from last N days
+- `startDate` / `endDate` (string, optional) - Date range filter
+- `limit` (number, optional) - Maximum memories to export
 
-**Example:**
-```json
-{
-  "query": "TypeScript",
-  "tags": ["coding"],
-  "limit": 5,
-  "minRelevance": 0.7
-}
-```
-
-**Relevance Filtering Examples:**
-```json
-// High precision - only highly relevant results (best for LLM context)
-{ "query": "architecture decisions", "minRelevance": 0.8 }
-
-// Medium precision - moderately relevant results
-{ "query": "bug fixes", "minRelevance": 0.5 }
-
-// No filter - all matches ranked by relevance (default)
-{ "query": "typescript" }
-```
-
-**Time Range Examples:**
-```json
-// Find memories from last week
-{ "query": "project update", "daysAgo": 7 }
-
-// Find memories from specific date range
-{ "startDate": "2025-01-01", "endDate": "2025-01-31" }
-
-// Find recent memories with specific tags
-{ "tags": ["bug"], "daysAgo": 3 }
-```
-
-### `update-memory`
-Update an existing memory with new content and/or tags.
+### `import-memory`
+Import memories from JSON file.
 
 **Parameters:**
-- `hash` (string, required) - Hash of the memory to update
-- `content` (string, required) - New content for the memory
-- `tags` (array, optional) - New tags to replace existing tags (if omitted, existing tags preserved)
-
-**Behavior:**
-- Hash changes when content changes
-- Memory ID and creation date remain unchanged
-- Relationships to other memories are preserved
-
-**Example:**
-```json
-{
-  "hash": "abc123...",
-  "content": "Updated project status: phase 2 complete",
-  "tags": ["project", "status", "complete"]
-}
-```
-
-### `delete-memory`
-Delete memories by hash or tag.
-
-**Parameters:**
-- `hash` (string, optional) - Hash of specific memory to delete
-- `tag` (string, optional) - Delete all memories with this tag
-
-**Example:**
-```json
-{
-  "tag": "temporary"
-}
-```
-
-### `memory-stats`
-Get statistics about stored memories.
-
-**Returns:**
-- Total memories count
-- Total relationships count
-- Database size in bytes
-- Schema version
-- Backup status (if configured):
-  - Backup path
-  - Number of backup files
-  - Minutes since last backup
-  - Minutes until next backup
+- `input` (string, required) - Input file path
+- `skipDuplicates` (boolean, optional) - Skip existing memories
+- `preserveTimestamps` (boolean, optional) - Keep original dates
+- `dryRun` (boolean, optional) - Preview without importing
 
 ---
 
 ## ⚙️ Configuration
 
+### Zero Config Default
+
+Simple Memory works **out of the box** with no configuration needed:
+
+```
+~/.simple-memory/memory.db
+```
+
+- **Windows**: `C:\Users\{username}\.simple-memory\memory.db`
+- **macOS/Linux**: `/home/{username}/.simple-memory/memory.db`
+
+Just add to your MCP config and start using it:
+
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "command": "simple-memory"
+    }
+  }
+}
+```
+
 ### Environment Variables
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `MEMORY_DB` | Database file path | `./memory.db` | `/home/user/memories.db` |
+| `MEMORY_DB` | Database file path | `~/.simple-memory/memory.db` | `/home/user/memories.db` |
 | `MEMORY_BACKUP_PATH` | Backup directory (optional) | None | `/home/user/backups` |
 | `MEMORY_BACKUP_INTERVAL` | Minutes between backups | `0` (disabled) | `180` |
 | `MEMORY_BACKUP_KEEP` | Number of backups to keep | `10` | `24` |
@@ -306,7 +290,7 @@ Get statistics about stored memories.
 
 ### Custom Database Location
 
-> 💡 **Quick Access**: Run `npm run setup` to see your config file path, then Ctrl+click to open it
+For power users who want to control where the database is stored:
 
 ```json
 {
@@ -385,6 +369,38 @@ Run multiple instances for different contexts:
 }
 ```
 
+### HTTP Transport (Advanced)
+
+For Docker deployments, remote servers, or avoiding local Node.js path issues, you can run Simple Memory as an HTTP server:
+
+**1. Start the HTTP server:**
+```bash
+# With default database (~/.simple-memory/memory.db)
+simple-memory --http
+
+# With custom database and port
+MEMORY_DB=/path/to/memory.db MCP_PORT=3001 simple-memory --http
+```
+
+**2. Configure your MCP client to use HTTP:**
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+**When to use HTTP transport:**
+- 🐳 Running in Docker or remote server
+- 🖥️ Multiple MCP clients sharing one database
+- 🔧 Avoiding Node.js path configuration issues
+- 🌐 Exposing memory server to network (use with caution!)
+
+**Note:** HTTP transport requires manually starting the server before using MCP clients. For most local setups, the default stdio transport is simpler.
+
 ---
 
 ## 🗄️ Database
@@ -440,11 +456,8 @@ npm run build
 # Build with version bump (for releases)
 npm run build:release
 
-# Run all tests (28 tests)
-npm run test:all
-
-# Run specific test suites
-npm test              # Core functionality (9 tests)
+# Run tests
+npm test              # GraphQL tests (11 tests)
 npm run test:perf     # Performance tests (6 tests)
 npm run test:migration # Migration tests (13 tests)
 
@@ -458,7 +471,7 @@ npm run unlink        # Remove global link
 # Or manually
 npm link              # Link current directory globally
 npm unlink -g         # Unlink from global
-simple-memory memory-stats  # Test the global command
+simple-memory memory-graphql --query '{ stats { totalMemories } }'  # Test the global command
 ```
 
 ### Versioning
@@ -479,10 +492,17 @@ The workflow skips version bumps for:
 
 The project has comprehensive test coverage:
 
-- ✅ **Core Tests** (9) - CRUD operations, search, basic functionality
+- ✅ **GraphQL Tests** (11) - Full CRUD, batching, error handling via GraphQL API
 - ✅ **Performance Tests** (6) - Large content, size limits, throughput
 - ✅ **Migration Tests** (13) - Schema upgrades, rollback safety, data integrity
-- ✅ **Benchmarks** - Detailed performance metrics
+- ✅ **Benchmarks** - Detailed performance metrics with reproduction steps
+
+```bash
+npm test              # GraphQL comprehensive tests
+npm run test:perf     # Performance tests
+npm run test:migration # Migration tests
+npm run benchmark     # Full benchmark suite (reproduce README numbers)
+```
 
 All tests pass with 100% backward compatibility.
 
@@ -602,21 +622,22 @@ You can also use the CLI directly for testing or scripting:
 
 ```bash
 # Store a memory
-simple-memory store-memory \
-  --content "PostgreSQL connection: postgresql://localhost:5432/mydb" \
-  --tags "database,credentials"
+simple-memory memory-graphql --query 'mutation { 
+  store(content: "PostgreSQL connection: postgresql://localhost:5432/mydb", tags: ["database", "credentials"]) 
+  { hash } 
+}'
 
 # Search by content
-simple-memory search-memory --query "PostgreSQL"
+simple-memory memory-graphql --query '{ memories(query: "PostgreSQL") { hash title tags } }'
 
 # Search by tags
-simple-memory search-memory --tags "credentials"
+simple-memory memory-graphql --query '{ memories(tags: ["credentials"]) { hash content } }'
 
 # View statistics
-simple-memory memory-stats
+simple-memory memory-graphql --query '{ stats { totalMemories totalRelationships dbSize } }'
 
 # Delete memories by tag
-simple-memory delete-memory --tag "temporary"
+simple-memory memory-graphql --query 'mutation { delete(tag: "temporary") { deletedCount } }'
 ```
 
 **When to use CLI:**

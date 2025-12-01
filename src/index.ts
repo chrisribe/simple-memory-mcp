@@ -12,11 +12,14 @@ import {
 import { config } from 'dotenv';
 config();
 
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { MemoryService } from './services/memory-service.js';
 import { toolRegistry } from './tools/index.js';
 import type { ToolContext } from './types/tools.js';
 import { debugLog } from './utils/debug.js';
 import { checkDatabaseIntegrity, rebuildHashIndex } from './utils/db-integrity-check.js';
+import { getDatabasePath, ensureConfigDir } from './utils/config.js';
 import { StreamableHTTPServerTransport } from './transports/streamable-http.js';
 
 // Initialize server
@@ -36,13 +39,32 @@ const server = new Server(
 // Initialize services
 function initializeServices(): MemoryService {
   try {
-    const dbPath = process.env.MEMORY_DB || './memory.db';
+    const { path: dbPath, isDefault } = getDatabasePath();
+    const resolvedPath = resolve(dbPath);
+    const dbExists = existsSync(resolvedPath);
+    
+    // Ensure config directory exists for default path
+    if (isDefault) {
+      ensureConfigDir();
+    }
+    
+    // Log where the database is (helpful for debugging)
+    if (!dbExists) {
+      if (isDefault) {
+        debugLog(`Creating database at default location: ${resolvedPath}`);
+        debugLog(`To use a custom location, set MEMORY_DB in your MCP config.`);
+      } else {
+        debugLog(`Creating NEW database at: ${resolvedPath}`);
+      }
+    }
+    
     const memoryService = new MemoryService(dbPath);
     memoryService.initialize();
     
-    debugLog('Memory service initialized');
+    debugLog('Memory service initialized at:', resolvedPath);
     return memoryService;
   } catch (error) {
+    // Fatal error - this should always show
     console.error('Failed to initialize services:', error);
     process.exit(1);
   }
@@ -136,9 +158,23 @@ async function main() {
   };
   
   if (cliArgs.length > 0) {
-    // CLI mode - check for integrity commands first
+    // CLI mode - check for help first
+    if (cliArgs[0] === '--help' || cliArgs[0] === '-h') {
+      const toolNames = toolRegistry.getToolNames();
+      console.log('simple-memory - Persistent memory storage for LLMs\n');
+      console.log('Usage: simple-memory <command> [options]\n');
+      console.log('Commands:');
+      toolNames.forEach(name => console.log(`  ${name}`));
+      console.log('  check-integrity    Check database integrity');
+      console.log('  rebuild-index      Rebuild hash index');
+      console.log('\nRun "simple-memory <command> --help" for command-specific options.');
+      process.exit(0);
+    }
+    
+    // CLI mode - check for integrity commands
     if (cliArgs[0] === 'check-integrity') {
-      const dbPath = process.env.MEMORY_DB || './memory.db';
+      const { path: dbPath } = getDatabasePath();
+      console.log(`Database: ${dbPath}\n`);
       console.log('Running database integrity check...\n');
       const result = checkDatabaseIntegrity(dbPath);
       
@@ -161,24 +197,25 @@ async function main() {
       
       process.exit(result.orphanedMemories.length > 0 ? 1 : 0);
     } else if (cliArgs[0] === 'rebuild-index') {
-      const dbPath = process.env.MEMORY_DB || './memory.db';
+      const { path: dbPath } = getDatabasePath();
+      console.log(`Database: ${dbPath}\n`);
       rebuildHashIndex(dbPath);
       process.exit(0);
     }
     
-    // CLI mode - handle tool execution
-    const [toolName, ...toolArgs] = cliArgs;
+    const [commandName, ...commandArgs] = cliArgs;
     
-    if (!toolRegistry.hasTool(toolName)) {
-      console.error(`Unknown tool: ${toolName}`);
-      console.error('Available tools:', toolRegistry.getToolNames().join(', '));
+    // Tool execution
+    if (!toolRegistry.hasTool(commandName)) {
+      console.error(`Unknown command: ${commandName}`);
+      console.log('\nAvailable commands: ' + toolRegistry.getToolNames().join(', '));
       process.exit(1);
     }
     
     try {
-      const parser = toolRegistry.getCliParser(toolName);
-      const parsedArgs = parser ? parser(toolArgs) : {};
-      const result = await toolRegistry.handle(toolName, parsedArgs, toolContext);
+      const parser = toolRegistry.getCliParser(commandName);
+      const parsedArgs = parser ? parser(commandArgs) : {};
+      const result = await toolRegistry.handle(commandName, parsedArgs, toolContext);
       console.log(JSON.stringify(result, null, 2));
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);
