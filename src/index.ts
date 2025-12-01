@@ -151,6 +151,11 @@ function escapeGraphQL(str: string): string {
     .replace(/\t/g, '\\t');
 }
 
+// Helper to process tags for GraphQL
+function processTagsForGraphQL(tags: string): string {
+  return tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ');
+}
+
 // Simple shortcut definitions - maps commands to GraphQL query builders
 const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
   search: (args: any) => {
@@ -158,8 +163,7 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
     const parts = [`limit: ${limit}`];
     if (args.query) parts.push(`query: "${escapeGraphQL(args.query)}"`);
     if (args.tags) {
-      const tags = args.tags.split(',').map((t: string) => `"${t.trim()}"`);
-      parts.push(`tags: [${tags.join(', ')}]`);
+      parts.push(`tags: [${processTagsForGraphQL(args.tags)}]`);
     }
     if (args.daysAgo) parts.push(`daysAgo: ${args.daysAgo}`);
     if (args.summary) parts.push(`summaryOnly: true`);
@@ -173,20 +177,15 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
 
   store: (args: any) => {
     if (!args.content) throw new Error('--content is required');
-    const tags = args.tags 
-      ? args.tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ')
-      : '';
-    const tagsArg = tags ? `, tags: [${tags}]` : '';
+    const tagsArg = args.tags ? `, tags: [${processTagsForGraphQL(args.tags)}]` : '';
     return `mutation { store(content: "${escapeGraphQL(args.content)}"${tagsArg}) { success hash } }`;
   },
 
   update: (args: any) => {
     if (!args.hash) throw new Error('--hash is required');
     if (!args.content) throw new Error('--content is required');
-    const tags = args.tags
-      ? `, tags: [${args.tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ')}]`
-      : '';
-    return `mutation { update(hash: "${args.hash}", content: "${escapeGraphQL(args.content)}"${tags}) { success newHash } }`;
+    const tagsArg = args.tags ? `, tags: [${processTagsForGraphQL(args.tags)}]` : '';
+    return `mutation { update(hash: "${args.hash}", content: "${escapeGraphQL(args.content)}"${tagsArg}) { success newHash } }`;
   },
 
   get: (args: any) => {
@@ -228,13 +227,15 @@ function parseCliArgs(args: string[]): Record<string, any> {
     
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
-      const value = args[i + 1];
+      const nextArg = args[i + 1];
       
-      if (!value || value.startsWith('--')) {
-        result[key] = true; // boolean flag
-      } else {
-        result[key] = value;
+      // Check if next arg exists and is not another flag
+      if (nextArg && !nextArg.startsWith('--')) {
+        result[key] = nextArg;
         i++; // skip next arg
+      } else {
+        // Boolean flag (no value or next arg is another flag)
+        result[key] = true;
       }
     }
   }
