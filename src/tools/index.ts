@@ -3,30 +3,21 @@
 import type { Tool, ToolDefinition, ToolContext } from '../types/tools.js';
 
 // Import memory tools
-import { storeMemoryTool } from './store-memory/index.js';
-import { searchMemoryTool } from './search-memory/index.js';
-import { deleteMemoryTool } from './delete-memory/index.js';
-import { updateMemoryTool } from './update-memory/index.js';
-import { memoryStatsTool } from './memory-stats/index.js';
+// GraphQL unified interface - replaces store/search/update/delete/stats
+import { memoryGraphqlTool } from './memory-graphql/index.js';
+// File I/O tools - kept separate (not suitable for GraphQL)
 import { exportMemoryTool } from './export-memory/index.js';
 import { importMemoryTool } from './import-memory/index.js';
-import { memoryGraphqlTool } from './memory-graphql/index.js';
 
 export class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
 
   constructor() {
-    // Register memory tools in order of usage frequency and safety
-    // (search first, delete last to avoid LLM assuming destructive operations)
-    this.registerTool(searchMemoryTool);
-    this.registerTool(storeMemoryTool);
-    this.registerTool(updateMemoryTool);
-    this.registerTool(memoryStatsTool);
+    // GraphQL: unified interface for all CRUD + stats operations
+    this.registerTool(memoryGraphqlTool);
+    // File I/O: export/import are separate (backup/restore, not queries)
     this.registerTool(exportMemoryTool);
     this.registerTool(importMemoryTool);
-    this.registerTool(deleteMemoryTool);
-    // GraphQL unified interface - single tool that can do everything above
-    this.registerTool(memoryGraphqlTool);
   }
 
   private registerTool(tool: Tool): void {

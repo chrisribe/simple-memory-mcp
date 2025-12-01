@@ -136,7 +136,20 @@ async function main() {
   };
   
   if (cliArgs.length > 0) {
-    // CLI mode - check for integrity commands first
+    // CLI mode - check for help first
+    if (cliArgs[0] === '--help' || cliArgs[0] === '-h') {
+      const toolNames = toolRegistry.getToolNames();
+      console.log('simple-memory - Persistent memory storage for LLMs\n');
+      console.log('Usage: simple-memory <command> [options]\n');
+      console.log('Commands:');
+      toolNames.forEach(name => console.log(`  ${name}`));
+      console.log('  check-integrity    Check database integrity');
+      console.log('  rebuild-index      Rebuild hash index');
+      console.log('\nRun "simple-memory <command> --help" for command-specific options.');
+      process.exit(0);
+    }
+    
+    // CLI mode - check for integrity commands
     if (cliArgs[0] === 'check-integrity') {
       const dbPath = process.env.MEMORY_DB || './memory.db';
       console.log('Running database integrity check...\n');
@@ -166,19 +179,19 @@ async function main() {
       process.exit(0);
     }
     
-    // CLI mode - handle tool execution
-    const [toolName, ...toolArgs] = cliArgs;
+    const [commandName, ...commandArgs] = cliArgs;
     
-    if (!toolRegistry.hasTool(toolName)) {
-      console.error(`Unknown tool: ${toolName}`);
-      console.error('Available tools:', toolRegistry.getToolNames().join(', '));
+    // Tool execution
+    if (!toolRegistry.hasTool(commandName)) {
+      console.error(`Unknown command: ${commandName}`);
+      console.log('\nAvailable commands: ' + toolRegistry.getToolNames().join(', '));
       process.exit(1);
     }
     
     try {
-      const parser = toolRegistry.getCliParser(toolName);
-      const parsedArgs = parser ? parser(toolArgs) : {};
-      const result = await toolRegistry.handle(toolName, parsedArgs, toolContext);
+      const parser = toolRegistry.getCliParser(commandName);
+      const parsedArgs = parser ? parser(commandArgs) : {};
+      const result = await toolRegistry.handle(commandName, parsedArgs, toolContext);
       console.log(JSON.stringify(result, null, 2));
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : error);

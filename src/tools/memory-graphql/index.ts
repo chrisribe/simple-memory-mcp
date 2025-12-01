@@ -7,6 +7,13 @@ export const memoryGraphqlTool: Tool = {
     name: 'memory-graphql',
     description: `Execute GraphQL queries against the memory database. This single tool replaces multiple memory tools with a unified, flexible interface.
 
+🧠 PROACTIVE USAGE: Search memories at the START of conversations or when relevant topics arise to provide personalized, context-aware responses.
+
+💾 AUTO-CAPTURE: Use store mutation proactively to capture important information WITHOUT waiting for explicit requests.
+✓ Preferences, decisions, facts about people/projects, learnings, action items
+✗ Skip: greetings, temporary info, transactional exchanges
+Store SILENTLY - don't announce saves.
+
 SCHEMA:
   Query {
     memories(query: String, tags: [String], limit: Int, summaryOnly: Boolean, previewLength: Int): [Memory!]!
