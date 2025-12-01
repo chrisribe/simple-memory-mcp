@@ -1,54 +1,54 @@
 # Memory Server Tests
 
-Comprehensive test suite to verify the Simple Memory MCP Server functionality.
+Test suite to verify the Simple Memory MCP Server functionality.
 
 ## Running Tests
 
 ```bash
-# Run all TypeScript tests
-npm test
+# Run GraphQL comprehensive test
+node dist/tests/graphql-comprehensive-test.js
 
 # Run performance benchmarks
 npm run test:perf
 
-# Run both test suites
-npm run test:all
+# Run export/import test
+node dist/tests/export-import-test.js
 
-# PowerShell validation test
-.\src\tests\test-lazy-backup.ps1    # Backup throttling test (~70 seconds)
+# Run time-range test
+node dist/tests/time-range-test.js
 ```
 
 ## Test Coverage
 
-### TypeScript Tests (npm test)
-- **Basic Operations**: Store, search, delete memories
-- **Tag-based Operations**: Search and filter by tags
-- **Relationship Features**: Auto-linking and explicit relationships  
-- **Enhanced Search**: Include related memories in search results
-- **CLI Functionality**: All command-line tools and argument parsing
-- **JSON Output**: Validation of all API responses
-- **Database Operations**: Persistence, statistics, cleanup
-- **Migration System**: Schema versioning and upgrades
+### GraphQL Comprehensive Test
+- **CRUD Operations**: Store, search, update, delete via GraphQL
+- **Search**: Content search and tag filtering
+- **Batching**: Multiple operations in single query
+- **Related Memories**: Relationship traversal
+- **Error Handling**: Invalid queries, non-existent records
 
-### Performance Tests (npm run test:perf)
+### Performance Tests
 - **Large Content**: 1KB - 1MB memory storage
 - **Search Performance**: FTS5 query speed validation
-- **Database Size**: Efficiency metrics
 - **Throughput**: Operations per second
 
-### PowerShell Tests
-- **Lazy Backup**: Tests backup creation, throttling, and persistence across CLI invocations
+### Other Tests
+- **Export/Import**: Backup and restore functionality
+- **Time Range**: Date-based filtering
+- **Migration**: Schema versioning and upgrades
 
 ## Test Files
 
 ```
 src/tests/
 ├── README.md                      # This file
-├── memory-server-tests.ts         # Comprehensive functionality tests
-├── performance-test.ts            # Large content and performance validation
-├── performance-benchmark.ts       # Speed and throughput benchmarks
-├── migration-test.ts              # Schema migration testing
-└── test-lazy-backup.ps1           # Backup throttling test (~70s)
+├── graphql-comprehensive-test.ts  # Core GraphQL functionality (11 tests)
+├── graphql-test.ts                # Quick GraphQL smoke test
+├── export-import-test.ts          # Backup/restore testing
+├── time-range-test.ts             # Date filtering tests
+├── performance-test.ts            # Large content validation
+├── performance-benchmark.ts       # Speed benchmarks
+└── migration-test.ts              # Schema migration testing
 ```
 
 Tests automatically clean up their test databases after completion.
