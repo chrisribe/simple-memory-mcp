@@ -1,6 +1,33 @@
 # Configuration Unification Plan
 
-## Problem Statement
+## Status: ✅ IMPLEMENTED (2025-11-30)
+
+Simplified to "sensible defaults" approach instead of full config file system.
+
+### What Was Implemented
+
+**Default Database Path:**
+```
+~/.simple-memory/memory.db
+
+# Windows: C:\Users\{username}\.simple-memory\memory.db
+# Linux/Mac: /home/{username}/.simple-memory/memory.db
+```
+
+**Resolution Order:**
+1. `MEMORY_DB` environment variable (power users)
+2. `~/.simple-memory/memory.db` (default - auto-created)
+
+**Key Benefits:**
+- ✅ Zero config for new users - just works
+- ✅ Predictable location - always the same path
+- ✅ No more "empty DB in random CWD" problem
+- ✅ Power users can still override with `MEMORY_DB`
+- ✅ Discoverable: `~/.simple-memory/` is easy to find
+
+---
+
+## Original Problem Statement (for reference)
 
 Currently, simple-memory has a fragmented configuration story:
 

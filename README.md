@@ -254,11 +254,34 @@ Import memories from JSON file.
 
 ## ⚙️ Configuration
 
+### Zero Config Default
+
+Simple Memory works **out of the box** with no configuration needed:
+
+```
+~/.simple-memory/memory.db
+```
+
+- **Windows**: `C:\Users\{username}\.simple-memory\memory.db`
+- **macOS/Linux**: `/home/{username}/.simple-memory/memory.db`
+
+Just add to your MCP config and start using it:
+
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "command": "simple-memory"
+    }
+  }
+}
+```
+
 ### Environment Variables
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `MEMORY_DB` | Database file path | `./memory.db` | `/home/user/memories.db` |
+| `MEMORY_DB` | Database file path | `~/.simple-memory/memory.db` | `/home/user/memories.db` |
 | `MEMORY_BACKUP_PATH` | Backup directory (optional) | None | `/home/user/backups` |
 | `MEMORY_BACKUP_INTERVAL` | Minutes between backups | `0` (disabled) | `180` |
 | `MEMORY_BACKUP_KEEP` | Number of backups to keep | `10` | `24` |
@@ -267,7 +290,7 @@ Import memories from JSON file.
 
 ### Custom Database Location
 
-> 💡 **Quick Access**: Run `npm run setup` to see your config file path, then Ctrl+click to open it
+For power users who want to control where the database is stored:
 
 ```json
 {
@@ -345,6 +368,38 @@ Run multiple instances for different contexts:
   }
 }
 ```
+
+### HTTP Transport (Advanced)
+
+For Docker deployments, remote servers, or avoiding local Node.js path issues, you can run Simple Memory as an HTTP server:
+
+**1. Start the HTTP server:**
+```bash
+# With default database (~/.simple-memory/memory.db)
+simple-memory --http
+
+# With custom database and port
+MEMORY_DB=/path/to/memory.db MCP_PORT=3001 simple-memory --http
+```
+
+**2. Configure your MCP client to use HTTP:**
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+**When to use HTTP transport:**
+- 🐳 Running in Docker or remote server
+- 🖥️ Multiple MCP clients sharing one database
+- 🔧 Avoiding Node.js path configuration issues
+- 🌐 Exposing memory server to network (use with caution!)
+
+**Note:** HTTP transport requires manually starting the server before using MCP clients. For most local setups, the default stdio transport is simpler.
 
 ---
 

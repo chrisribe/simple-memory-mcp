@@ -47,6 +47,23 @@ const MemorySummaryType = `#graphql
   }
 `;
 
+const MCPConfigPathType = `#graphql
+  """MCP configuration file location"""
+  type MCPConfigPath {
+    """Name of the MCP client (e.g., 'VS Code', 'Claude Desktop')"""
+    name: String!
+
+    """Absolute path to the config file"""
+    path: String!
+
+    """Whether the config file exists"""
+    exists: Boolean!
+
+    """Whether simple-memory is configured in this file"""
+    hasSimpleMemory: Boolean
+  }
+`;
+
 const StatsType = `#graphql
   """Database statistics"""
   type Stats {
@@ -67,6 +84,9 @@ const StatsType = `#graphql
 
     """Schema version"""
     schemaVersion: Int!
+
+    """Known MCP config file locations"""
+    mcpConfigPaths: [MCPConfigPath!]
   }
 `;
 
@@ -226,6 +246,7 @@ const MutationType = `#graphql
 export const typeDefs = [
   MemoryType,
   MemorySummaryType,
+  MCPConfigPathType,
   StatsType,
   DeleteResultType,
   StoreResultType,
