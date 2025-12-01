@@ -2,11 +2,12 @@
  * GraphQL executor for memory-graphql MCP tool
  */
 
-import { graphql, buildSchema } from 'graphql';
+import { graphql } from 'graphql';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import type { ToolContext } from '../../types/tools.js';
 import { typeDefs } from '../../graphql/schema.js';
 import { createResolvers } from '../../graphql/resolvers.js';
+import type { MemoryService } from '../../services/memory-service.js';
 
 interface MemoryGraphqlArgs {
   query: string;
@@ -18,8 +19,18 @@ interface MemoryGraphqlResult {
   errors?: Array<{ message: string; path?: string[] }>;
 }
 
-// Cache the schema (created once per process)
-let cachedSchema: ReturnType<typeof makeExecutableSchema> | null = null;
+// Cache schema per memoryService instance to avoid rebuilding on every call
+const schemaCache = new WeakMap<MemoryService, ReturnType<typeof makeExecutableSchema>>();
+
+function getOrCreateSchema(memoryService: MemoryService) {
+  let schema = schemaCache.get(memoryService);
+  if (!schema) {
+    const resolvers = createResolvers(memoryService);
+    schema = makeExecutableSchema({ typeDefs, resolvers });
+    schemaCache.set(memoryService, schema);
+  }
+  return schema;
+}
 
 export async function execute(args: MemoryGraphqlArgs, context: ToolContext): Promise<MemoryGraphqlResult> {
   if (!args.query || typeof args.query !== 'string') {
@@ -29,15 +40,8 @@ export async function execute(args: MemoryGraphqlArgs, context: ToolContext): Pr
   }
 
   try {
-    // Create schema with resolvers bound to this context's memoryService
-    // We recreate resolvers each time to ensure they use the current context
-    const resolvers = createResolvers(context.memoryService);
-    
-    // Build executable schema (could cache if performance becomes an issue)
-    const schema = makeExecutableSchema({
-      typeDefs,
-      resolvers
-    });
+    // Get cached schema or create new one for this memoryService
+    const schema = getOrCreateSchema(context.memoryService);
 
     // Execute the GraphQL query
     const result = await graphql({
