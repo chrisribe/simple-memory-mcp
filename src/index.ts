@@ -209,7 +209,7 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
   },
 
   stats: () => {
-    return `{ stats { version totalMemories totalRelationships dbSize schemaVersion } }`;
+    return `{ stats { version totalMemories totalRelationships dbSize dbPath schemaVersion configPath mcpConfigPaths { name path exists } } }`;
   },
 };
 
@@ -259,6 +259,9 @@ QUICK COMMANDS:
   related       Find related memories
   delete        Delete a memory
   stats         Show database statistics
+
+CONFIGURATION:
+  config           Show or initialize config file
 
 ADVANCED:
   graphql          Execute raw GraphQL query
@@ -370,6 +373,25 @@ EXAMPLES:
   simple-memory graphql --query '{ memories(limit: 5) { hash title tags } }'
   simple-memory graphql --query 'mutation { store(content: "text") { hash } }'
 `,
+    config: `
+simple-memory config - Show or initialize configuration
+
+OPTIONS:
+  --init              Create default config.json with examples
+  --show              Show current config (default)
+  --path              Show path to config file only
+
+EXAMPLES:
+  simple-memory config                # Show current configuration
+  simple-memory config --init         # Create config.json with examples
+  simple-memory config --path         # Print config file path
+
+CONFIG FILE:
+  Location: ~/.simple-memory/config.json
+
+  Settings in config.json apply to ALL clients (CLI, MCP, etc.)
+  Environment variables can override for specific contexts.
+`,
   };
 
   console.log(help[command] || 'No help available for this command.');
@@ -462,6 +484,43 @@ async function main() {
       }
       const result = await executeGraphQLQuery(parsedArgs.query);
       console.log(JSON.stringify(result, null, 2));
+      process.exit(0);
+    }
+    
+    // Handle config command
+    if (command === 'config') {
+      const parsedArgs = parseCliArgs(cliArgs.slice(1));
+      
+      if (parsedArgs.help) {
+        showCommandHelp('config');
+        process.exit(0);
+      }
+      
+      const { getConfigPath, loadConfigFile, initConfigFile, getConfig } = await import('./utils/config.js');
+      const configPath = getConfigPath();
+      
+      if (parsedArgs.path) {
+        console.log(configPath);
+        process.exit(0);
+      }
+      
+      if (parsedArgs.init) {
+        const { path, created } = initConfigFile();
+        if (created) {
+          console.log(`✅ Created config file: ${path}`);
+          console.log('\nEdit this file to configure database, backups, and other settings.');
+          console.log('Settings apply to all clients (CLI, MCP, etc.)');
+        } else {
+          console.log(`Config file already exists: ${path}`);
+        }
+        process.exit(0);
+      }
+      
+      // Default: show current config
+      console.log(`Config file: ${configPath}\n`);
+      const config = getConfig();
+      console.log('Current configuration:');
+      console.log(JSON.stringify(config, null, 2));
       process.exit(0);
     }
     

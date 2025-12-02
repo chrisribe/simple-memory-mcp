@@ -5,6 +5,52 @@ All notable changes to the Simple Memory MCP Server will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-02
+
+### Added
+- **CLI Shortcuts**: Simple intuitive commands that replace verbose GraphQL syntax
+  - `simple-memory search` - Search memories by content or tags
+  - `simple-memory store` - Store a new memory
+  - `simple-memory update` - Update an existing memory
+  - `simple-memory get` - Get a memory by hash
+  - `simple-memory related` - Find related memories
+  - `simple-memory delete` - Delete a memory by hash or tag
+  - `simple-memory stats` - Show database statistics with config paths
+  - `simple-memory graphql` - Raw GraphQL for power users
+  - `simple-memory config` - View or initialize configuration
+
+- **Central Configuration File**: `~/.simple-memory/config.json`
+  - One config file for all clients (CLI, VS Code, Claude Desktop, etc.)
+  - Settings: database path, backup path/interval/keep, cloudSafe, debug
+  - Environment variables still work as per-client overrides
+  - `simple-memory config --init` creates config with examples
+
+- **`--verbose` Flag**: Learn GraphQL by seeing generated queries
+  - Works with all shortcut commands
+  - Shows the GraphQL query before executing
+  - Great for users transitioning to raw GraphQL
+
+- **Cleaner CLI Output**: Debug logs suppressed by default in CLI mode
+  - Set `MEMORY_DEBUG=true` to enable debug output
+  - MCP server mode still shows debug for troubleshooting
+
+- **Stats Enhancements**: More useful information
+  - Shows `configPath` - path to config.json
+  - Shows `dbPath` - resolved database path
+  - Shows all MCP client config locations
+
+### Changed
+- **CLI Commands Renamed** (Breaking Change):
+  - `memory-graphql` → `graphql`
+  - Old verbose commands replaced with simple shortcuts
+  - `simple-memory <command> --help` for command-specific help
+
+### Migration Guide
+If upgrading from 1.0.x:
+1. Update CLI scripts: `memory-graphql --query '...'` → `graphql --query '...'`
+2. Or use new shortcuts: `simple-memory search --query "text"`
+3. Optionally create central config: `simple-memory config --init`
+
 ## [Unreleased]
 
 ### Added

@@ -85,6 +85,9 @@ const StatsType = `#graphql
     """Schema version"""
     schemaVersion: Int!
 
+    """Path to config.json file"""
+    configPath: String
+
     """Known MCP config file locations"""
     mcpConfigPaths: [MCPConfigPath!]
   }
