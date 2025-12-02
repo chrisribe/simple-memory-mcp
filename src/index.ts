@@ -290,11 +290,13 @@ OPTIONS:
   --limit <n>         Max results [default: 10]
   --daysAgo <n>       Filter to last N days
   --summary           Return summaries only (faster)
+  --verbose           Show generated GraphQL query
 
 EXAMPLES:
   simple-memory search --query "typescript"
   simple-memory search --tags "project,work" --limit 20
   simple-memory search --query "bug" --daysAgo 7
+  simple-memory search --query "api" --verbose
 `,
     store: `
 simple-memory store - Store a new memory
@@ -302,6 +304,7 @@ simple-memory store - Store a new memory
 OPTIONS:
   --content <text>    Content to store (required)
   --tags <tags>       Tags (comma-separated)
+  --verbose           Show generated GraphQL query
 
 EXAMPLES:
   simple-memory store --content "Remember this note"
@@ -356,6 +359,17 @@ No options needed.
 EXAMPLES:
   simple-memory stats
 `,
+    graphql: `
+simple-memory graphql - Execute raw GraphQL query
+
+OPTIONS:
+  --query <graphql>   GraphQL query or mutation (required)
+
+EXAMPLES:
+  simple-memory graphql --query '{ stats { totalMemories } }'
+  simple-memory graphql --query '{ memories(limit: 5) { hash title tags } }'
+  simple-memory graphql --query 'mutation { store(content: "text") { hash } }'
+`,
   };
 
   console.log(help[command] || 'No help available for this command.');
@@ -378,6 +392,13 @@ async function main() {
   
   // Remove transport flags from args
   const cliArgs = args.filter(arg => arg !== '--http' && arg !== '--both');
+  
+  // Suppress debug output in CLI mode for cleaner output (must be set before service init)
+  // But respect explicit MEMORY_DEBUG=true if user wants debug in CLI
+  const isCliMode = cliArgs.length > 0;
+  if (isCliMode && process.env.MEMORY_DEBUG !== 'true') {
+    process.env.MEMORY_DEBUG = 'false';
+  }
   
   // Initialize services (backup auto-configures from env vars)
   memoryService = initializeServices();
@@ -408,6 +429,13 @@ async function main() {
       
       try {
         const query = CLI_SHORTCUTS[command](parsedArgs);
+        
+        // Show generated GraphQL if --verbose flag is set (helps users learn GraphQL)
+        if (parsedArgs.verbose) {
+          console.log('Generated GraphQL:', query);
+          console.log('---');
+        }
+        
         const result = await executeGraphQLQuery(query);
         console.log(JSON.stringify(result, null, 2));
         process.exit(0);
@@ -421,8 +449,15 @@ async function main() {
     // Handle raw GraphQL
     if (command === 'graphql') {
       const parsedArgs = parseCliArgs(cliArgs.slice(1));
+      
+      if (parsedArgs.help) {
+        showCommandHelp('graphql');
+        process.exit(0);
+      }
+      
       if (!parsedArgs.query) {
         console.error('Error: --query is required');
+        console.log('\nRun "simple-memory graphql --help" for usage.');
         process.exit(1);
       }
       const result = await executeGraphQLQuery(parsedArgs.query);

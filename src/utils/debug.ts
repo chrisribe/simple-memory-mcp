@@ -2,8 +2,13 @@
 
 /**
  * Check if debug logging is enabled
+ * Respects MEMORY_DEBUG=false to suppress output in CLI mode
  */
 function isDebugEnabled(): boolean {
+  // Explicitly disabled (CLI mode sets this)
+  if (process.env.MEMORY_DEBUG === 'false') {
+    return false;
+  }
   return process.env.DEBUG === 'true' || process.argv.length > 2;
 }
 
