@@ -21,6 +21,7 @@ import { debugLog } from './utils/debug.js';
 import { checkDatabaseIntegrity, rebuildHashIndex } from './utils/db-integrity-check.js';
 import { getDatabasePath, ensureConfigDir } from './utils/config.js';
 import { StreamableHTTPServerTransport } from './transports/streamable-http.js';
+import { execute as executeGraphQL } from './tools/memory-graphql/executor.js';
 
 // Initialize server
 const server = new Server(
@@ -136,6 +137,250 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   };
 });
 
+// =============================================================================
+// CLI SHORTCUTS - Simple commands that generate GraphQL queries
+// =============================================================================
+
+// Helper to escape GraphQL strings
+function escapeGraphQL(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+// Helper to process tags for GraphQL
+function processTagsForGraphQL(tags: string): string {
+  return tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ');
+}
+
+// Simple shortcut definitions - maps commands to GraphQL query builders
+const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
+  search: (args: any) => {
+    const limit = args.limit || 10;
+    const parts = [`limit: ${limit}`];
+    if (args.query) parts.push(`query: "${escapeGraphQL(args.query)}"`);
+    if (args.tags) {
+      parts.push(`tags: [${processTagsForGraphQL(args.tags)}]`);
+    }
+    if (args.daysAgo) parts.push(`daysAgo: ${args.daysAgo}`);
+    if (args.summary) parts.push(`summaryOnly: true`);
+    
+    const fields = args.summary 
+      ? 'hash title preview tags createdAt'
+      : 'hash title content tags createdAt';
+    
+    return `{ memories(${parts.join(', ')}) { ${fields} } }`;
+  },
+
+  store: (args: any) => {
+    if (!args.content) throw new Error('--content is required');
+    const tagsArg = args.tags ? `, tags: [${processTagsForGraphQL(args.tags)}]` : '';
+    return `mutation { store(content: "${escapeGraphQL(args.content)}"${tagsArg}) { success hash } }`;
+  },
+
+  update: (args: any) => {
+    if (!args.hash) throw new Error('--hash is required');
+    if (!args.content) throw new Error('--content is required');
+    const tagsArg = args.tags ? `, tags: [${processTagsForGraphQL(args.tags)}]` : '';
+    return `mutation { update(hash: "${args.hash}", content: "${escapeGraphQL(args.content)}"${tagsArg}) { success newHash } }`;
+  },
+
+  get: (args: any) => {
+    if (!args.hash) throw new Error('--hash is required');
+    return `{ memory(hash: "${args.hash}") { hash content tags createdAt } }`;
+  },
+
+  related: (args: any) => {
+    if (!args.hash) throw new Error('--hash is required');
+    const limit = args.limit || 10;
+    return `{ related(hash: "${args.hash}", limit: ${limit}) { hash title tags } }`;
+  },
+
+  delete: (args: any) => {
+    if (args.hash) {
+      return `mutation { delete(hash: "${args.hash}") { success deletedCount } }`;
+    } else if (args.tag) {
+      return `mutation { delete(tag: "${args.tag}") { success deletedCount } }`;
+    }
+    throw new Error('Either --hash or --tag is required');
+  },
+
+  stats: () => {
+    return `{ stats { version totalMemories totalRelationships dbSize schemaVersion } }`;
+  },
+};
+
+// Parse CLI args helper - simple argument parser
+function parseCliArgs(args: string[]): Record<string, any> {
+  const result: Record<string, any> = {};
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--help' || arg === '-h') {
+      result.help = true;
+      continue;
+    }
+    
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const nextArg = args[i + 1];
+      
+      // Check if next arg exists and is not another flag
+      if (nextArg && !nextArg.startsWith('--')) {
+        result[key] = nextArg;
+        i++; // skip next arg
+      } else {
+        // Boolean flag (no value or next arg is another flag)
+        result[key] = true;
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Show general help
+function showHelp() {
+  console.log(`
+simple-memory - Persistent memory storage for LLMs
+
+USAGE:
+  simple-memory <command> [options]
+
+QUICK COMMANDS:
+  search        Search memories by content or tags
+  store         Store a new memory
+  update        Update an existing memory
+  get           Get a memory by hash
+  related       Find related memories
+  delete        Delete a memory
+  stats         Show database statistics
+
+ADVANCED:
+  graphql          Execute raw GraphQL query
+  export-memory    Export memories to JSON
+  import-memory    Import memories from JSON
+  check-integrity  Check database integrity
+  rebuild-index    Rebuild hash index
+
+Run "simple-memory <command> --help" for command-specific options.
+
+EXAMPLES:
+  simple-memory search --query "typescript" --limit 5
+  simple-memory store --content "Remember this" --tags "note,important"
+  simple-memory stats
+  simple-memory get --hash "abc123..."
+  simple-memory delete --tag "temporary"
+`);
+}
+
+// Show command-specific help
+function showCommandHelp(command: string) {
+  const help: Record<string, string> = {
+    search: `
+simple-memory search - Search memories
+
+OPTIONS:
+  --query <text>      Full-text search query
+  --tags <tags>       Filter by tags (comma-separated)
+  --limit <n>         Max results [default: 10]
+  --daysAgo <n>       Filter to last N days
+  --summary           Return summaries only (faster)
+  --verbose           Show generated GraphQL query
+
+EXAMPLES:
+  simple-memory search --query "typescript"
+  simple-memory search --tags "project,work" --limit 20
+  simple-memory search --query "bug" --daysAgo 7
+  simple-memory search --query "api" --verbose
+`,
+    store: `
+simple-memory store - Store a new memory
+
+OPTIONS:
+  --content <text>    Content to store (required)
+  --tags <tags>       Tags (comma-separated)
+  --verbose           Show generated GraphQL query
+
+EXAMPLES:
+  simple-memory store --content "Remember this note"
+  simple-memory store --content "API key: xyz" --tags "credentials,api"
+`,
+    update: `
+simple-memory update - Update existing memory
+
+OPTIONS:
+  --hash <hash>       Memory hash (required)
+  --content <text>    New content (required)
+  --tags <tags>       New tags (replaces existing)
+
+EXAMPLES:
+  simple-memory update --hash "abc123" --content "Updated content"
+`,
+    get: `
+simple-memory get - Get memory by hash
+
+OPTIONS:
+  --hash <hash>       Memory hash (required)
+
+EXAMPLES:
+  simple-memory get --hash "abc123..."
+`,
+    related: `
+simple-memory related - Find related memories
+
+OPTIONS:
+  --hash <hash>       Memory hash (required)
+  --limit <n>         Max results [default: 10]
+
+EXAMPLES:
+  simple-memory related --hash "abc123..."
+`,
+    delete: `
+simple-memory delete - Delete memory
+
+OPTIONS:
+  --hash <hash>       Delete specific memory
+  --tag <tag>         Delete all with this tag (use ONE only)
+
+EXAMPLES:
+  simple-memory delete --hash "abc123..."
+  simple-memory delete --tag "temporary"
+`,
+    stats: `
+simple-memory stats - Show database statistics
+
+No options needed.
+
+EXAMPLES:
+  simple-memory stats
+`,
+    graphql: `
+simple-memory graphql - Execute raw GraphQL query
+
+OPTIONS:
+  --query <graphql>   GraphQL query or mutation (required)
+
+EXAMPLES:
+  simple-memory graphql --query '{ stats { totalMemories } }'
+  simple-memory graphql --query '{ memories(limit: 5) { hash title tags } }'
+  simple-memory graphql --query 'mutation { store(content: "text") { hash } }'
+`,
+  };
+
+  console.log(help[command] || 'No help available for this command.');
+}
+
+// Execute GraphQL query helper
+async function executeGraphQLQuery(query: string): Promise<any> {
+  const result = await executeGraphQL({ query }, toolContext);
+  return result;
+}
+
 // Start server or run CLI
 async function main() {
   const args = process.argv.slice(2);
@@ -147,6 +392,13 @@ async function main() {
   
   // Remove transport flags from args
   const cliArgs = args.filter(arg => arg !== '--http' && arg !== '--both');
+  
+  // Suppress debug output in CLI mode for cleaner output (must be set before service init)
+  // But respect explicit MEMORY_DEBUG=true if user wants debug in CLI
+  const isCliMode = cliArgs.length > 0;
+  if (isCliMode && process.env.MEMORY_DEBUG !== 'true') {
+    process.env.MEMORY_DEBUG = 'false';
+  }
   
   // Initialize services (backup auto-configures from env vars)
   memoryService = initializeServices();
@@ -160,19 +412,61 @@ async function main() {
   if (cliArgs.length > 0) {
     // CLI mode - check for help first
     if (cliArgs[0] === '--help' || cliArgs[0] === '-h') {
-      const toolNames = toolRegistry.getToolNames();
-      console.log('simple-memory - Persistent memory storage for LLMs\n');
-      console.log('Usage: simple-memory <command> [options]\n');
-      console.log('Commands:');
-      toolNames.forEach(name => console.log(`  ${name}`));
-      console.log('  check-integrity    Check database integrity');
-      console.log('  rebuild-index      Rebuild hash index');
-      console.log('\nRun "simple-memory <command> --help" for command-specific options.');
+      showHelp();
+      process.exit(0);
+    }
+    
+    const command = cliArgs[0];
+    
+    // Handle shortcuts
+    if (command in CLI_SHORTCUTS) {
+      const parsedArgs = parseCliArgs(cliArgs.slice(1));
+      
+      if (parsedArgs.help) {
+        showCommandHelp(command);
+        process.exit(0);
+      }
+      
+      try {
+        const query = CLI_SHORTCUTS[command](parsedArgs);
+        
+        // Show generated GraphQL if --verbose flag is set (helps users learn GraphQL)
+        if (parsedArgs.verbose) {
+          console.log('Generated GraphQL:', query);
+          console.log('---');
+        }
+        
+        const result = await executeGraphQLQuery(query);
+        console.log(JSON.stringify(result, null, 2));
+        process.exit(0);
+      } catch (error) {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+        console.log(`\nRun "simple-memory ${command} --help" for usage.`);
+        process.exit(1);
+      }
+    }
+
+    // Handle raw GraphQL
+    if (command === 'graphql') {
+      const parsedArgs = parseCliArgs(cliArgs.slice(1));
+      
+      if (parsedArgs.help) {
+        showCommandHelp('graphql');
+        process.exit(0);
+      }
+      
+      if (!parsedArgs.query) {
+        console.error('Error: --query is required');
+        console.log('\nRun "simple-memory graphql --help" for usage.');
+        process.exit(1);
+      }
+      const result = await executeGraphQLQuery(parsedArgs.query);
+      console.log(JSON.stringify(result, null, 2));
       process.exit(0);
     }
     
     // CLI mode - check for integrity commands
-    if (cliArgs[0] === 'check-integrity') {
+    if (command === 'check-integrity') {
       const { path: dbPath } = getDatabasePath();
       console.log(`Database: ${dbPath}\n`);
       console.log('Running database integrity check...\n');
@@ -190,37 +484,39 @@ async function main() {
           console.log(`  ID ${mem.id}: ${mem.hash}`);
           console.log(`    Content: ${mem.content}`);
         });
-        console.log('\nRun "node dist/index.js rebuild-index" to rebuild the hash index');
+        console.log('\nRun "simple-memory rebuild-index" to rebuild the hash index');
       } else {
         console.log('\n✓ No integrity issues detected');
       }
       
       process.exit(result.orphanedMemories.length > 0 ? 1 : 0);
-    } else if (cliArgs[0] === 'rebuild-index') {
+    }
+    
+    if (command === 'rebuild-index') {
       const { path: dbPath } = getDatabasePath();
       console.log(`Database: ${dbPath}\n`);
       rebuildHashIndex(dbPath);
       process.exit(0);
     }
-    
-    const [commandName, ...commandArgs] = cliArgs;
-    
-    // Tool execution
-    if (!toolRegistry.hasTool(commandName)) {
-      console.error(`Unknown command: ${commandName}`);
-      console.log('\nAvailable commands: ' + toolRegistry.getToolNames().join(', '));
-      process.exit(1);
+
+    // Handle export/import (keep these as-is from tool registry)
+    if (command === 'export-memory' || command === 'import-memory') {
+      try {
+        const parser = toolRegistry.getCliParser(command);
+        const parsedArgs = parser ? parser(cliArgs.slice(1)) : {};
+        const result = await toolRegistry.handle(command, parsedArgs, toolContext);
+        console.log(JSON.stringify(result, null, 2));
+        process.exit(0);
+      } catch (error) {
+        console.error('Error:', error instanceof Error ? error.message : error);
+        process.exit(1);
+      }
     }
-    
-    try {
-      const parser = toolRegistry.getCliParser(commandName);
-      const parsedArgs = parser ? parser(commandArgs) : {};
-      const result = await toolRegistry.handle(commandName, parsedArgs, toolContext);
-      console.log(JSON.stringify(result, null, 2));
-    } catch (error) {
-      console.error('Error:', error instanceof Error ? error.message : error);
-      process.exit(1);
-    }
+
+    // Unknown command
+    console.error(`Unknown command: ${command}`);
+    showHelp();
+    process.exit(1);
   } else {
     // MCP mode - connect transport(s)
     if (useHttp) {

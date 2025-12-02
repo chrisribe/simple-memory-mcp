@@ -134,33 +134,59 @@ The assistant stores memories silently and retrieves them when relevant, creatin
 
 ### Command Line Interface
 
-The CLI uses GraphQL for all operations:
+#### Quick Commands
+
+For common operations, use simple shortcuts:
 
 ```bash
+# Search memories
+simple-memory search --query "typescript" --limit 5
+simple-memory search --tags "project,work" --limit 20
+simple-memory search --query "bug" --daysAgo 7
+simple-memory search --query "api" --verbose  # Shows generated GraphQL
+
 # Store a memory
-simple-memory memory-graphql --query 'mutation { store(content: "Your content", tags: ["tag1", "tag2"]) { hash } }'
-
-# Search by content
-simple-memory memory-graphql --query '{ memories(query: "search term", limit: 5) { hash title tags } }'
-
-# Search by tags  
-simple-memory memory-graphql --query '{ memories(tags: ["tag1"], limit: 10) { hash title content } }'
-
-# Get full content by hash
-simple-memory memory-graphql --query '{ memory(hash: "abc123...") { content tags createdAt } }'
-
-# View statistics
-simple-memory memory-graphql --query '{ stats { totalMemories totalRelationships dbSize } }'
+simple-memory store --content "Remember this note"
+simple-memory store --content "API key: xyz" --tags "credentials,api"
 
 # Update a memory
-simple-memory memory-graphql --query 'mutation { update(hash: "abc123...", content: "New content", tags: ["new"]) { hash } }'
+simple-memory update --hash "abc123..." --content "Updated content"
 
-# Delete by hash or tag
-simple-memory memory-graphql --query 'mutation { delete(hash: "abc123...") { deletedCount } }'
-simple-memory memory-graphql --query 'mutation { delete(tag: "old-notes") { deletedCount } }'
+# Get specific memory
+simple-memory get --hash "abc123..."
+
+# Find related memories
+simple-memory related --hash "abc123..." --limit 10
+
+# Delete memories
+simple-memory delete --hash "abc123..."
+simple-memory delete --tag "temporary"
+
+# Get database stats
+simple-memory stats
+
+# Export/import
+simple-memory export-memory --output backup.json
+simple-memory import-memory --input backup.json
+```
+
+Run `simple-memory <command> --help` for command-specific options.
+
+> 💡 **Learning GraphQL?** Use `--verbose` with any shortcut command to see the generated GraphQL query. Great for learning the syntax!
+
+#### Advanced: Raw GraphQL
+
+Power users can execute raw GraphQL queries:
+
+```bash
+# Raw GraphQL query
+simple-memory graphql --query '{ memories(query: "search term") { hash title tags } }'
+
+# GraphQL mutation
+simple-memory graphql --query 'mutation { store(content: "Your content") { hash } }'
 
 # Batch multiple operations in one call
-simple-memory memory-graphql --query '{
+simple-memory graphql --query '{
   recent: memories(limit: 5) { hash title }
   tagged: memories(tags: ["important"]) { hash title }
   stats { totalMemories }
@@ -286,7 +312,8 @@ Just add to your MCP config and start using it:
 | `MEMORY_BACKUP_INTERVAL` | Minutes between backups | `0` (disabled) | `180` |
 | `MEMORY_BACKUP_KEEP` | Number of backups to keep | `10` | `24` |
 | `MEMORY_CLOUD_SAFE` | Cloud storage safe mode | `false` | `true` |
-| `DEBUG` | Enable debug logging | `false` | `true` |
+| `MEMORY_DEBUG` | Enable debug logging in CLI mode | `false` | `true` |
+| `DEBUG` | Enable debug logging (MCP server) | `false` | `true` |
 
 ### Custom Database Location
 
