@@ -143,6 +143,7 @@ For common operations, use simple shortcuts:
 simple-memory search --query "typescript" --limit 5
 simple-memory search --tags "project,work" --limit 20
 simple-memory search --query "bug" --daysAgo 7
+simple-memory search --query "api" --verbose  # Shows generated GraphQL
 
 # Store a memory
 simple-memory store --content "Remember this note"
@@ -170,6 +171,8 @@ simple-memory import-memory --input backup.json
 ```
 
 Run `simple-memory <command> --help` for command-specific options.
+
+> 💡 **Learning GraphQL?** Use `--verbose` with any shortcut command to see the generated GraphQL query. Great for learning the syntax!
 
 #### Advanced: Raw GraphQL
 
@@ -309,7 +312,8 @@ Just add to your MCP config and start using it:
 | `MEMORY_BACKUP_INTERVAL` | Minutes between backups | `0` (disabled) | `180` |
 | `MEMORY_BACKUP_KEEP` | Number of backups to keep | `10` | `24` |
 | `MEMORY_CLOUD_SAFE` | Cloud storage safe mode | `false` | `true` |
-| `DEBUG` | Enable debug logging | `false` | `true` |
+| `MEMORY_DEBUG` | Enable debug logging in CLI mode | `false` | `true` |
+| `DEBUG` | Enable debug logging (MCP server) | `false` | `true` |
 
 ### Custom Database Location
 
