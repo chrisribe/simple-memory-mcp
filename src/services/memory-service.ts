@@ -10,6 +10,7 @@ import { runMigrations } from './migrations.js';
 import { DatabaseOptimizer } from './database-optimizer.js';
 import { BackupService, BackupConfig } from './backup-service.js';
 import { getMCPConfigPaths, type MCPConfigPath } from '../utils/mcp-config.js';
+import { getBackupConfig, getConfigPath } from '../utils/config.js';
 import type { ExportFilters, ImportOptions, ImportResult, ExportFormat, ExportedMemory } from '../types/tools.js';
 
 // Get package version for export metadata
@@ -49,6 +50,7 @@ export interface MemoryStats {
   dbPath: string;
   resolvedPath: string;
   schemaVersion: number;
+  configPath?: string; // Path to config.json
   backupEnabled?: boolean;
   backupPath?: string;
   backupCount?: number;
@@ -76,13 +78,13 @@ export class MemoryService {
     // Cache resolved path once
     this.resolvedDbPath = resolve(dbPath);
     
-    // Auto-configure backup if env vars are set
-    const backupPath = process.env.MEMORY_BACKUP_PATH;
-    if (backupPath) {
+    // Auto-configure backup from config file or env vars
+    const backupConfig = getBackupConfig();
+    if (backupConfig.path) {
       this.backup = new BackupService(dbPath, {
-        backupPath,
-        autoBackupInterval: parseInt(process.env.MEMORY_BACKUP_INTERVAL || '0', 10),
-        maxBackups: parseInt(process.env.MEMORY_BACKUP_KEEP || '10', 10)
+        backupPath: backupConfig.path,
+        autoBackupInterval: backupConfig.interval,
+        maxBackups: backupConfig.keep
       });
     }
   }
@@ -666,6 +668,9 @@ export class MemoryService {
     ).get() as any;
     const schemaVersion = versionResult?.version || 0;
     
+    // Get backup config from unified config system
+    const backupConfig = getBackupConfig();
+    
     const stats: MemoryStats = {
       version: getPackageVersion(),
       totalMemories: memoryCount.count,
@@ -674,17 +679,18 @@ export class MemoryService {
               (this.db.pragma('page_count', { simple: true }) as number),
       dbPath: this.dbPath,
       resolvedPath: this.resolvedDbPath.replace(/\\/g, '/'), // Normalize to forward slashes
-      schemaVersion
+      schemaVersion,
+      configPath: getConfigPath().replace(/\\/g, '/'), // Path to config.json
     };
     
     // Add backup information if backup service is configured
     if (this.backup) {
       const backups = this.backup.listBackups();
       const lastBackupAge = this.backup.getTimeSinceLastBackup();
-      const backupInterval = parseInt(process.env.MEMORY_BACKUP_INTERVAL || '0', 10);
+      const backupInterval = backupConfig.interval;
       
       stats.backupEnabled = true;
-      stats.backupPath = process.env.MEMORY_BACKUP_PATH;
+      stats.backupPath = backupConfig.path;
       stats.backupCount = backups.length;
       stats.lastBackupAge = lastBackupAge >= 0 ? lastBackupAge : undefined;
       
