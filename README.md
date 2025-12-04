@@ -704,9 +704,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📚 Additional Resources
 
+### For Users
 - 🏗️ [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Why Simple Memory is built this way, trade-offs, and honest limitations
 - 🚀 [Performance Benchmarks](docs/PERFORMANCE.md) - Detailed performance analysis and optimization insights
 - 📝 [Changelog](CHANGELOG.md) - Version history and changes
+
+### For Package Maintainers
+- 📦 [NPM Publishing Summary](docs/NPM_PUBLISHING_SUMMARY.md) - Complete readiness assessment and publishing status
+- 📘 [NPM Publishing Guide](docs/NPM_PUBLISHING_GUIDE.md) - Step-by-step guide to publish to NPM
+- ✅ [Publishing Checklist](docs/PUBLISHING_CHECKLIST.md) - Pre-publish verification checklist
+- 🛠️ [Maintenance Guide](docs/MAINTENANCE_GUIDE.md) - Ongoing package maintenance and best practices
+- ⚡ [NPM Quick Start](docs/NPM_QUICK_START.md) - Quick reference for experienced developers
 
 ---
 
