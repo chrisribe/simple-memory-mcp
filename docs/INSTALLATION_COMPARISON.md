@@ -288,7 +288,7 @@ For npx auto-install to work, the package must:
    ```
 4. ✅ **Have executable entry point**: Already has `#!/usr/bin/env node`
 
-**Current Status**: Package was unpublished on 2025-06-21. Needs to be republished.
+**Current Status**: Package was unpublished on 2025-06-21 (June 21, 2025). Needs to be republished.
 
 ---
 

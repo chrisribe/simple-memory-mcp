@@ -54,7 +54,7 @@ Choose the method that works best for you:
 
 **Zero setup required!** Just add to your MCP client configuration and it auto-installs on first use.
 
-> ⚠️ **Note**: Package must be published to npm for this method. Currently in development - use Method 2 or 3 for now.
+> ⚠️ **Note**: This method requires the package to be published to npm. The package is ready for publication but hasn't been published yet. Use Method 2 or 3 in the meantime. Once published, this will be the recommended installation method.
 
 **Claude Desktop** (`claude_desktop_config.json`):
 ```json
