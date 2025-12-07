@@ -45,35 +45,80 @@ Perfect for AI assistants that need to remember context across conversations, st
 
 > 💡 **Best Experience**: Simple Memory works best with **Claude Sonnet in Agent Mode**. The agent's autonomous decision-making and proactive behavior enables optimal memory capture and retrieval without explicit instructions.
 
-### 1️⃣ One-Command Setup
+### ⚡ Installation Methods
 
-**From Source:**
-```bash
-git clone https://github.com/chrisribe/simple-memory-mcp.git
-cd simple-memory-mcp
-npm run setup
+Choose the method that works best for you:
+
+<details open>
+<summary><b>🎯 Method 1: Auto-Install with npx (Recommended for End Users)</b></summary>
+
+**Zero setup required!** Just add to your MCP client configuration and it auto-installs on first use.
+
+> ⚠️ **Note**: Package must be published to npm for this method. Currently in development - use Method 2 or 3 for now.
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "simple-memory-mcp": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"]
+    }
+  }
+}
 ```
 
-**Or from npm (when published):**
+**VS Code** (`mcp.json`):
+```json
+{
+  "servers": {
+    "simple-memory-mcp": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"]
+    }
+  }
+}
+```
+
+**Windows Users**: Use `npx.cmd` instead of `npx`:
+```json
+{
+  "mcpServers": {
+    "simple-memory-mcp": {
+      "command": "npx.cmd",
+      "args": ["-y", "simple-memory-mcp"]
+    }
+  }
+}
+```
+
+**✨ Benefits:**
+- ✅ No manual installation steps
+- ✅ Automatic updates (always runs latest version)
+- ✅ No need to clone repository
+- ✅ Works across all MCP clients
+
+**📌 Version Pinning:**
+To lock to a specific version:
+```json
+{
+  "args": ["-y", "simple-memory-mcp@1.1.0"]
+}
+```
+
+</details>
+
+<details>
+<summary><b>📦 Method 2: Global Install from npm</b></summary>
+
+**For users who prefer traditional npm installation:**
+
 ```bash
 npm install -g simple-memory-mcp
 ```
 
-That's it! The `setup` command automatically:
-- ✅ Installs dependencies
-- ✅ Builds TypeScript → JavaScript
-- ✅ Links globally (makes `simple-memory` command available)
-- ✅ Configures VS Code (both stable and Insiders)
+Then configure your MCP client:
 
-> 💡 VS Code users: The setup automatically adds the MCP server to your `mcp.json` file. Just restart VS Code after setup!
-> 
-> 💡 Need to customize? Run `npm run setup` again to see the config file path (Ctrl+click to open)
-
-### 2️⃣ For Other MCP Clients (Optional)
-
-If you're using Claude Desktop or other MCP clients, add this to their config:
-
-**Claude Desktop** (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -84,10 +129,80 @@ If you're using Claude Desktop or other MCP clients, add this to their config:
 }
 ```
 
-> 💡 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`  
-> 💡 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**✨ Benefits:**
+- ✅ Faster startup (no download on each run)
+- ✅ Works offline after installation
+- ✅ Manual control over updates
 
-### 3️⃣ Start Using
+**🔄 Updates:**
+```bash
+npm update -g simple-memory-mcp
+```
+
+</details>
+
+<details>
+<summary><b>🔧 Method 3: From Source (For Contributors & Development)</b></summary>
+
+**For contributors or those who want to modify the code:**
+
+```bash
+git clone https://github.com/chrisribe/simple-memory-mcp.git
+cd simple-memory-mcp
+npm run setup
+```
+
+The `setup` command automatically:
+- ✅ Installs dependencies
+- ✅ Builds TypeScript → JavaScript
+- ✅ Links globally (makes `simple-memory` command available)
+- ✅ Configures VS Code (both stable and Insiders)
+
+Then configure your MCP client:
+```json
+{
+  "mcpServers": {
+    "simple-memory-mcp": {
+      "command": "simple-memory"
+    }
+  }
+}
+```
+
+> 💡 VS Code users: The setup automatically adds the MCP server to your `mcp.json` file. Just restart VS Code after setup!
+
+**✨ Benefits:**
+- ✅ Full source code access
+- ✅ Easy to modify and contribute
+- ✅ Latest development changes
+
+**🔄 Updates:**
+```bash
+git pull
+npm run build
+```
+
+</details>
+
+---
+
+> 💡 **Need help choosing?** See the [Installation Methods Comparison](docs/INSTALLATION_COMPARISON.md) for detailed analysis of each approach.
+
+---
+
+### 📍 Configuration File Locations
+
+**Claude Desktop:**
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+**VS Code:**
+- **Windows**: `%APPDATA%\Code\User\mcp.json`
+- **macOS**: `~/Library/Application Support/Code/User/mcp.json`
+- **Linux**: `~/.config/Code/User/mcp.json`
+
+### 🚀 Start Using
 
 Restart your MCP client and the `simple-memory-mcp` server will be available. The AI assistant can now:
 - 🧠 Remember information across conversations
@@ -317,8 +432,22 @@ Just add to your MCP config and start using it:
 
 ### Custom Database Location
 
-For power users who want to control where the database is stored:
+#### With npx Auto-Install:
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"],
+      "env": {
+        "MEMORY_DB": "/path/to/your/memory.db"
+      }
+    }
+  }
+}
+```
 
+#### With Global Install or From Source:
 ```json
 {
   "mcpServers": {
@@ -334,6 +463,25 @@ For power users who want to control where the database is stored:
 
 ### With Automatic Backups
 
+#### With npx Auto-Install:
+```json
+{
+  "mcpServers": {
+    "simple-memory": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"],
+      "env": {
+        "MEMORY_DB": "/home/user/memory.db",
+        "MEMORY_BACKUP_PATH": "/home/user/OneDrive/MCP-Backups",
+        "MEMORY_BACKUP_INTERVAL": "180",
+        "MEMORY_BACKUP_KEEP": "24"
+      }
+    }
+  }
+}
+```
+
+#### With Global Install or From Source:
 ```json
 {
   "mcpServers": {
@@ -377,6 +525,29 @@ This uses DELETE journal mode instead of WAL (30-50% slower but safer).
 
 Run multiple instances for different contexts:
 
+#### With npx Auto-Install:
+```json
+{
+  "mcpServers": {
+    "memory-work": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"],
+      "env": {
+        "MEMORY_DB": "/path/to/work-memory.db"
+      }
+    },
+    "memory-personal": {
+      "command": "npx",
+      "args": ["-y", "simple-memory-mcp"],
+      "env": {
+        "MEMORY_DB": "/path/to/personal-memory.db"
+      }
+    }
+  }
+}
+```
+
+#### With Global Install or From Source:
 ```json
 {
   "mcpServers": {
@@ -706,6 +877,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 🏗️ [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Why Simple Memory is built this way, trade-offs, and honest limitations
 - 🚀 [Performance Benchmarks](docs/PERFORMANCE.md) - Detailed performance analysis and optimization insights
+- 📦 [Installation Comparison](docs/INSTALLATION_COMPARISON.md) - Detailed comparison of npx vs npm install vs from source
+- 💡 [npx Recommendation](docs/NPX_RECOMMENDATION.md) - Analysis and recommendations for auto-install approach
 - 📝 [Changelog](CHANGELOG.md) - Version history and changes
 
 ---
