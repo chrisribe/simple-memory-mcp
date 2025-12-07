@@ -49,12 +49,12 @@ Perfect for AI assistants that need to remember context across conversations, st
 
 Choose the method that works best for you:
 
-<details open>
-<summary><b>🎯 Method 1: Auto-Install with npx (Recommended for End Users)</b></summary>
+<details>
+<summary><b>🎯 Method 1: Auto-Install with npx (Future - After npm Publication)</b></summary>
 
 **Zero setup required!** Just add to your MCP client configuration and it auto-installs on first use.
 
-> ⚠️ **Note**: This method requires the package to be published to npm. The package is ready for publication but hasn't been published yet. Use Method 2 or 3 in the meantime. Once published, this will be the recommended installation method.
+> ⚠️ **Current Status**: This method is NOT yet available. The package is ready for publication to npm but hasn't been published yet. Once published, this will become the recommended installation method. **For now, use Method 2 (Global Install) or Method 3 (From Source).**
 
 **Claude Desktop** (`claude_desktop_config.json`):
 ```json
@@ -109,9 +109,11 @@ To lock to a specific version:
 </details>
 
 <details>
-<summary><b>📦 Method 2: Global Install from npm</b></summary>
+<summary><b>📦 Method 2: Global Install from npm (Future - After npm Publication)</b></summary>
 
 **For users who prefer traditional npm installation:**
+
+> ⚠️ **Current Status**: This method is NOT yet available. Requires package to be published to npm. **For now, use Method 3 (From Source).**
 
 ```bash
 npm install -g simple-memory-mcp
@@ -141,10 +143,10 @@ npm update -g simple-memory-mcp
 
 </details>
 
-<details>
-<summary><b>🔧 Method 3: From Source (For Contributors & Development)</b></summary>
+<details open>
+<summary><b>🔧 Method 3: From Source (Currently the Only Available Method)</b></summary>
 
-**For contributors or those who want to modify the code:**
+**For contributors or those who want to use simple-memory-mcp right now:**
 
 ```bash
 git clone https://github.com/chrisribe/simple-memory-mcp.git
