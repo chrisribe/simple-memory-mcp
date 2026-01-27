@@ -12,8 +12,9 @@ import {
 import { config } from 'dotenv';
 config();
 
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { resolve, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { MemoryService } from './services/memory-service.js';
 import { toolRegistry } from './tools/index.js';
 import type { ToolContext } from './types/tools.js';
@@ -22,6 +23,13 @@ import { checkDatabaseIntegrity, rebuildHashIndex } from './utils/db-integrity-c
 import { getDatabasePath, ensureConfigDir } from './utils/config.js';
 import { StreamableHTTPServerTransport } from './transports/streamable-http.js';
 import { execute as executeGraphQL } from './tools/memory-graphql/executor.js';
+
+// Get package version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = join(__dirname, '../package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+const VERSION = packageJson.version;
 
 // Initialize server
 const server = new Server(
@@ -247,9 +255,14 @@ function parseCliArgs(args: string[]): Record<string, any> {
 function showHelp() {
   console.log(`
 simple-memory - Persistent memory storage for LLMs
+Version: ${VERSION}
 
 USAGE:
   simple-memory <command> [options]
+
+OPTIONS:
+  --version, -v    Show version number
+  --help, -h       Show help
 
 QUICK COMMANDS:
   search        Search memories by content or tags
@@ -406,6 +419,12 @@ async function executeGraphQLQuery(query: string): Promise<any> {
 // Start server or run CLI
 async function main() {
   const args = process.argv.slice(2);
+  
+  // Check for --version flag first (before other processing)
+  if (args.includes('--version') || args.includes('-v')) {
+    console.log(VERSION);
+    process.exit(0);
+  }
   
   // Check for --http or --both flags
   const useHttp = args.includes('--http') || args.includes('--both');
