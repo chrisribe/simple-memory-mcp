@@ -41,7 +41,7 @@ try {
 const server = new Server(
   {
     name: 'simple-memory-mcp',
-    version: '1.0.0',
+    version: VERSION,
   },
   {
     capabilities: {
