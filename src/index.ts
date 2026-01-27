@@ -28,8 +28,14 @@ import { execute as executeGraphQL } from './tools/memory-graphql/executor.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, '../package.json');
-const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-const VERSION = packageJson.version;
+
+let VERSION = '1.0.0'; // fallback version
+try {
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+  VERSION = packageJson.version;
+} catch (error) {
+  console.error('Warning: Could not read version from package.json:', error instanceof Error ? error.message : error);
+}
 
 // Initialize server
 const server = new Server(
