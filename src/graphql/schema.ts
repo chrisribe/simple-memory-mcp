@@ -307,6 +307,7 @@ EXAMPLES:
   }
 
 TIPS:
+  ⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
   • Use summaryOnly: true for search, then memory(hash) for full content
   • Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
   • Batch related queries to reduce round-trips
