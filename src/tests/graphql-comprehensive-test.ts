@@ -88,7 +88,21 @@ async function testStoreMutation(): Promise<string> {
     throw new Error('Store should return hash');
   }
   
+  // Verify that newly created memory has updatedAt set to null
+  const storedMemory = await execute({
+    query: `{ memory(hash: "${result.data.store.hash}") { createdAt updatedAt } }`
+  }, context);
+  
+  if (storedMemory.errors || !storedMemory.data?.memory) {
+    throw new Error('Failed to get stored memory');
+  }
+  
+  if (storedMemory.data.memory.updatedAt !== null) {
+    throw new Error('New memory should have updatedAt set to null');
+  }
+  
   console.log(`  ✓ Stored memory with hash: ${result.data.store.hash.slice(0, 8)}...`);
+  console.log(`  ✓ Verified new memory has updatedAt = null`);
   return result.data.store.hash;
 }
 
