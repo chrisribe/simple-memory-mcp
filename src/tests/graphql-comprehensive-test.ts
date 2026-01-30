@@ -148,6 +148,22 @@ async function testGetByHash(hash: string) {
 }
 
 async function testUpdateMutation(hash: string): Promise<string> {
+  // First, get the original memory to check createdAt
+  const originalResult = await execute({
+    query: `{ memory(hash: "${hash}") { createdAt updatedAt } }`
+  }, context);
+  
+  if (originalResult.errors || !originalResult.data?.memory) {
+    throw new Error('Failed to get original memory');
+  }
+  
+  const originalCreatedAt = originalResult.data.memory.createdAt;
+  const originalUpdatedAt = originalResult.data.memory.updatedAt;
+  
+  // Wait a bit to ensure timestamp difference
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Now update the memory
   const result = await execute({
     query: `mutation {
       update(hash: "${hash}", content: "Updated content for GraphQL test", tags: ["test", "graphql", "updated"]) {
@@ -175,7 +191,31 @@ async function testUpdateMutation(hash: string): Promise<string> {
     throw new Error('Old hash should no longer exist after update');
   }
   
+  // Verify the updated memory has updatedAt field set
+  const updatedMemory = await execute({
+    query: `{ memory(hash: "${result.data.update.newHash}") { createdAt updatedAt } }`
+  }, context);
+  
+  if (updatedMemory.errors || !updatedMemory.data?.memory) {
+    throw new Error('Failed to get updated memory');
+  }
+  
+  // Check that createdAt is preserved
+  if (updatedMemory.data.memory.createdAt !== originalCreatedAt) {
+    throw new Error('createdAt should be preserved after update');
+  }
+  
+  // Check that updatedAt is set and different from original (if it existed)
+  if (!updatedMemory.data.memory.updatedAt) {
+    throw new Error('updatedAt should be set after update');
+  }
+  
+  if (originalUpdatedAt && updatedMemory.data.memory.updatedAt === originalUpdatedAt) {
+    throw new Error('updatedAt should change after update');
+  }
+  
   console.log(`  ✓ Updated memory, new hash: ${result.data.update.newHash.slice(0, 8)}...`);
+  console.log(`  ✓ Verified updatedAt is set: ${updatedMemory.data.memory.updatedAt}`);
   return result.data.update.newHash;
 }
 

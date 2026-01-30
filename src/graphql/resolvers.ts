@@ -24,6 +24,7 @@ function toGraphQLMemory(entry: MemoryEntry, previewLength: number = 100) {
     },
     tags: entry.tags || [],
     createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
     relevance: entry.relevance
   };
 }

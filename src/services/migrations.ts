@@ -228,6 +228,25 @@ export const migrations: Migration[] = [
       
       debugLog('Migration 5: Deprecated tags column dropped successfully');
     }
+  },
+  {
+    version: 6,
+    description: 'Add updated_at column to memories table',
+    up: (db: Database.Database) => {
+      debugLog('Migration 6: Adding updated_at column');
+      
+      // Add updated_at column to memories table
+      db.exec(`
+        ALTER TABLE memories ADD COLUMN updated_at TEXT
+      `);
+      
+      // Create index for updated_at for efficient sorting by last modified
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_memories_updated_at ON memories(updated_at DESC)
+      `);
+      
+      debugLog('Migration 6: updated_at column added successfully');
+    }
   }
   // Future migrations go here - just add to the array!
 ];

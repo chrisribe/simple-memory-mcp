@@ -30,6 +30,9 @@ const MemoryType = `#graphql
     """ISO timestamp when memory was created"""
     createdAt: String!
 
+    """ISO timestamp when memory was last updated (null if never updated)"""
+    updatedAt: String
+
     """BM25 relevance score (0-1), only present for search results"""
     relevance: Float
   }
@@ -43,6 +46,7 @@ const MemorySummaryType = `#graphql
     preview: String!
     tags: [String!]!
     createdAt: String!
+    updatedAt: String
     relevance: Float
   }
 `;

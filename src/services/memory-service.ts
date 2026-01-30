@@ -31,6 +31,7 @@ export interface MemoryEntry {
   content: string;
   tags: string[];
   createdAt: string;
+  updatedAt?: string; // Timestamp of last update (optional for backwards compatibility)
   hash: string;
   relevance?: number; // BM25 relevance score (0-1), only present when using text search with minRelevance
 }
@@ -119,6 +120,7 @@ export class MemoryService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
         created_at TEXT,
+        updated_at TEXT,
         hash TEXT UNIQUE
       )
     `);
@@ -152,6 +154,7 @@ export class MemoryService {
       CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
       CREATE INDEX IF NOT EXISTS idx_tags_memory_id ON tags(memory_id);
       CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_memories_updated_at ON memories(updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_memories_hash ON memories(hash);
       CREATE INDEX IF NOT EXISTS idx_relationships_from ON relationships(from_memory_id);
       CREATE INDEX IF NOT EXISTS idx_relationships_to ON relationships(to_memory_id);
@@ -224,7 +227,7 @@ export class MemoryService {
       `),
       updateMemory: this.db!.prepare(`
         UPDATE memories 
-        SET content = ?, hash = ?
+        SET content = ?, hash = ?, updated_at = datetime('now')
         WHERE id = ?
       `),
       
@@ -481,6 +484,7 @@ export class MemoryService {
       content: row.content,
       tags: row.tags || [],
       createdAt: row.created_at,
+      ...(row.updated_at && { updatedAt: row.updated_at }),
       hash: row.hash,
       ...(row.relevance !== undefined && { relevance: row.relevance })
     }));
@@ -642,6 +646,7 @@ export class MemoryService {
         content: row.content,
         tags: tagRows.map(t => t.tag),
         createdAt: row.created_at,
+        ...(row.updated_at && { updatedAt: row.updated_at }),
         hash: row.hash,
         relationshipType: row.relationship_type
       };
@@ -813,6 +818,7 @@ export class MemoryService {
       content: result.content,
       tags: tagRows.map(t => t.tag),
       createdAt: result.created_at,
+      ...(result.updated_at && { updatedAt: result.updated_at }),
       hash: result.hash
     };
   }
@@ -1077,6 +1083,7 @@ export class MemoryService {
       content: result.content,
       tags: tagRows.map(t => t.tag),
       createdAt: result.created_at,
+      ...(result.updated_at && { updatedAt: result.updated_at }),
       hash: result.hash
     };
   }
