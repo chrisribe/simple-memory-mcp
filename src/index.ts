@@ -169,8 +169,8 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
     if (args.summary) parts.push(`summaryOnly: true`);
     
     const fields = args.summary 
-      ? 'hash title preview tags createdAt'
-      : 'hash title content tags createdAt';
+      ? 'hash title preview tags createdAt updatedAt'
+      : 'hash title content tags createdAt updatedAt';
     
     return `{ memories(${parts.join(', ')}) { ${fields} } }`;
   },
@@ -190,7 +190,7 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
 
   get: (args: any) => {
     if (!args.hash) throw new Error('--hash is required');
-    return `{ memory(hash: "${args.hash}") { hash content tags createdAt } }`;
+    return `{ memory(hash: "${args.hash}") { hash content tags createdAt updatedAt } }`;
   },
 
   related: (args: any) => {
