@@ -14,21 +14,21 @@ npm test             # Run all tests
 ### CLI Commands
 ```bash
 # Store
-node dist/index.js store-memory --content "text" --tags "tag1,tag2"
+node dist/index.js store --content "text" --tags "tag1,tag2"
 
 # Search
-node dist/index.js search-memory --query "text"          # By content
-node dist/index.js search-memory --tags "tag1"           # By tags
+node dist/index.js search --query "text"          # By content
+node dist/index.js search --tags "tag1"           # By tags
 
 # Update
-node dist/index.js update-memory --hash "abc..." --content "new text" --tags "new,tags"
+node dist/index.js update --hash "abc..." --content "new text" --tags "new,tags"
 
 # Delete
-node dist/index.js delete-memory --tag "tagname"         # By tag
-node dist/index.js delete-memory --hash "abc..."         # By hash
+node dist/index.js delete --tag "tagname"         # By tag
+node dist/index.js delete --hash "abc..."         # By hash
 
 # Stats
-node dist/index.js memory-stats
+node dist/index.js stats
 ```
 
 ### Database

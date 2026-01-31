@@ -209,7 +209,7 @@ const CLI_SHORTCUTS: Record<string, (args: any) => string> = {
   },
 
   stats: () => {
-    return `{ stats { version totalMemories totalRelationships dbSize dbPath schemaVersion configPath mcpConfigPaths { name path exists } } }`;
+    return `{ stats { version totalMemories totalRelationships dbSize dbPath schemaVersion configPath backupEnabled backupPath backupCount lastBackupAge nextBackupIn mcpConfigPaths { name path exists } } }`;
   },
 };
 

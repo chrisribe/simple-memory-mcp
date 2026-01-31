@@ -23,7 +23,7 @@
 
 **Expected LLM Behavior:**
 - ✅ Responds naturally about TypeScript
-- ✅ **Silently** calls `store-memory` in background
+- ✅ **Silently** calls `store` (memory-graphql tool) in background
 - ✅ Stores: "User prefers TypeScript over JavaScript for type safety and bug prevention"
 - ✅ Tags: `["preferences", "typescript", "javascript", "development"]`
 - ❌ Does NOT say "I've saved that to memory"
@@ -192,22 +192,22 @@ After the conversation, you can verify what was actually stored:
 export MEMORY_DB=./test-manual.db
 
 # Check all stored memories
-node dist/index.js search-memory --query "" --limit 20
+node dist/index.js search --query "" --limit 20
 
 # Check preferences
-node dist/index.js search-memory --tags "preferences"
+node dist/index.js search --tags "preferences"
 
 # Check decisions
-node dist/index.js search-memory --tags "decisions"
+node dist/index.js search --tags "decisions"
 
 # Check learnings
-node dist/index.js search-memory --tags "learning"
+node dist/index.js search --tags "learning"
 
 # Check action items
-node dist/index.js search-memory --tags "todo"
+node dist/index.js search --tags "todo"
 
 # Check stats
-node dist/index.js memory-stats
+node dist/index.js stats
 ```
 
 ---
