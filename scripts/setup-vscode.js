@@ -152,7 +152,7 @@ function main() {
     console.log('\n💡 Example configuration with all options:');
     console.log(MCP_CONFIG_WITH_COMMENTS);
     console.log('\n💡 To find and edit your config file:');
-    console.log('   Run: node dist/index.js memory-stats');
+    console.log('   Run: node dist/index.js stats');
     if (configuredCount > 0) {
       console.log('\n📖 Configuration docs: https://github.com/chrisribe/simple-memory-mcp#configuration');
     }

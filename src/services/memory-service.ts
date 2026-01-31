@@ -77,16 +77,6 @@ export class MemoryService {
     
     // Cache resolved path once
     this.resolvedDbPath = resolve(dbPath);
-    
-    // Auto-configure backup from config file or env vars
-    const backupConfig = getBackupConfig();
-    if (backupConfig.path) {
-      this.backup = new BackupService(dbPath, {
-        backupPath: backupConfig.path,
-        autoBackupInterval: backupConfig.interval,
-        maxBackups: backupConfig.keep
-      });
-    }
   }
 
   initialize(): void {
@@ -94,8 +84,16 @@ export class MemoryService {
       this.db = new Database(this.dbPath);
       this.initDb();
       
-      // Create initial backup if configured (MCP server only)
-      if (this.backup) {
+      // Configure backup service after db is ready
+      const backupConfig = getBackupConfig();
+      if (backupConfig.path) {
+        this.backup = new BackupService({
+          backupPath: backupConfig.path,
+          autoBackupInterval: backupConfig.interval,
+          maxBackups: backupConfig.keep,
+          source: backupConfig.source,
+          getBackupData: () => this.exportMemories()
+        });
         this.backup.initialize();
       }
       
@@ -685,13 +683,12 @@ export class MemoryService {
     
     // Add backup information if backup service is configured
     if (this.backup) {
-      const backups = this.backup.listBackups();
       const lastBackupAge = this.backup.getTimeSinceLastBackup();
       const backupInterval = backupConfig.interval;
       
       stats.backupEnabled = true;
       stats.backupPath = backupConfig.path;
-      stats.backupCount = backups.length;
+      stats.backupCount = this.backup.getBackupCount();
       stats.lastBackupAge = lastBackupAge >= 0 ? lastBackupAge : undefined;
       
       // Calculate next backup time
@@ -833,35 +830,6 @@ export class MemoryService {
    */
   createBackup(label: string = 'manual'): string | null {
     return this.backup?.backup(label) || null;
-  }
-
-  /**
-   * List all available backups
-   */
-  listBackups(): Array<{ name: string; path: string; size: number; created: Date }> {
-    return this.backup?.listBackups() || [];
-  }
-
-  /**
-   * Restore from a backup (requires restart after restore)
-   */
-  restoreFromBackup(backupPath: string): boolean {
-    if (!this.backup) return false;
-
-    // Close current connection
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
-
-    const success = this.backup.restore(backupPath);
-    
-    if (success) {
-      // Reinitialize with restored database
-      this.initialize();
-    }
-
-    return success;
   }
 
   /**
