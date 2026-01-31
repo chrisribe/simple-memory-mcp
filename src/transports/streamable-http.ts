@@ -95,7 +95,7 @@ export class StreamableHTTPServerTransport {
     debugLog('[HTTP Transport] Sending message:', message);
     
     // Check if this is a response to a pending request
-    if ('id' in message && message.id !== null) {
+    if ('id' in message && message.id !== null && message.id !== undefined) {
       const pending = this.pendingResponses.get(message.id);
       if (pending) {
         clearTimeout(pending.timer);

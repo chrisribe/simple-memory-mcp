@@ -712,9 +712,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📚 Additional Resources
 
+### For Users
 - 🏗️ [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) - Why Simple Memory is built this way, trade-offs, and honest limitations
 - 🚀 [Performance Benchmarks](docs/PERFORMANCE.md) - Detailed performance analysis and optimization insights
 - 📝 [Changelog](CHANGELOG.md) - Version history and changes
+
+### For Package Maintainers
+- 📦 [NPM Publishing Guide](docs/NPM_PUBLISHING.md) - Publishing steps, automation options, and maintenance tips
 
 ---
 
