@@ -17,12 +17,13 @@ npm login
 # 2. Verify
 npm audit && npm test && npm run build
 
-# 3. Publish
-npm publish --otp=123456  # add OTP if 2FA enabled
+# 3. Publish (with provenance for trust)
+npm publish --provenance --otp=123456  # add OTP if 2FA enabled
 
-# 4. Tag release
-git tag -a v1.1.1 -m "Release v1.1.1"
-git push origin v1.1.1
+# 4. Tag release (auto-gets version from package.json)
+VERSION=$(node -p "require('./package.json').version")
+git tag -a "v$VERSION" -m "Release v$VERSION"
+git push origin "v$VERSION"
 ```
 
 ---
@@ -32,8 +33,8 @@ git push origin v1.1.1
 **One-time setup:**
 
 1. **NPM Account**: Sign up at https://npmjs.com or run `npm adduser`
-2. **Enable 2FA**: Recommended for security (https://npmjs.com/settings/[username]/tfa)
-3. **Verify login**: `npm whoami`
+2. **Enable 2FA**: Recommended for security (https://npmjs.com/settings/cribe/tfa)
+3. **Verify login**: `npm whoami` (should show `cribe`)
 
 ---
 
@@ -84,15 +85,42 @@ npm run version:major        # 1.1.1 → 2.0.0 (breaking changes)
 
 ## Publishing Options
 
-### Option 1: Manual Publishing (Recommended)
+### Option 1: Manual Publishing (Recommended for First Release)
 
-**When to use:** Full control, first-time publish, major releases
+**When to use:** Full control, first-time publish, infrequent releases
 
 ```bash
-npm publish --otp=123456
+npm publish --provenance --otp=123456
 ```
 
-### Option 2: Automated Publishing (Advanced)
+### Option 2: GitHub Actions (Manual Trigger)
+
+**When to use:** Consistent environment, provenance support, still manual control
+
+1. Go to: https://github.com/chrisribe/simple-memory-mcp/actions/workflows/publish.yml
+2. Click "Run workflow"
+3. Select version bump type (patch/minor/major)
+4. Optionally enable dry-run to preview
+5. Click "Run workflow"
+
+**Benefits:**
+- Runs tests before publish
+- Adds npm provenance (build attestation)
+- Creates git tag + GitHub Release automatically
+- Consistent Linux build environment
+
+**Setup required:**
+1. Generate NPM token: https://npmjs.com/settings/cribe/tokens (use "Automation" type)
+   - Set "Packages and scopes" to **Read and write**
+   - Max expiration is **90 days** - set a calendar reminder to rotate
+2. Add as GitHub secret: Settings → Secrets → `NPM_TOKEN`
+
+**Token rotation (every 90 days):**
+1. Generate new token at npm
+2. Update GitHub secret with new value
+3. Old token can be deleted after confirming workflow works
+
+### Option 3: Fully Automated (Advanced)
 
 **When to use:** Mature packages with CI/CD
 
@@ -123,7 +151,7 @@ jobs:
 ```
 
 **Setup required:**
-1. Generate NPM token: https://npmjs.com/settings/[username]/tokens
+1. Generate NPM token: https://npmjs.com/settings/cribe/tokens
 2. Add as GitHub secret: Settings → Secrets → `NPM_TOKEN`
 3. Create GitHub release to trigger publish
 
@@ -170,6 +198,10 @@ npm outdated              # Check for updates
 npm update                # Update minor/patch versions
 npm test                  # Verify still works
 ```
+
+### Quarterly (Every 90 days)
+- Rotate NPM_TOKEN in GitHub secrets (npm tokens expire after max 90 days)
+- Review and update dependencies
 
 ### Before Major Dependency Updates
 ```bash
@@ -257,6 +289,6 @@ npm unpublish simple-memory-mcp@1.2.0
 npm login
 npm audit && npm test && npm run build
 npm run version:patch
-npm publish --otp=123456
-git tag -a v1.1.1 -m "Release v1.1.1" && git push --follow-tags
+npm publish --provenance --otp=123456
+git tag -a v$(node -p "require('./package.json').version") -m "Release" && git push --follow-tags
 ```
