@@ -88,6 +88,21 @@ const StatsType = `#graphql
     """Path to config.json file"""
     configPath: String
 
+    """Whether automatic backup is enabled"""
+    backupEnabled: Boolean
+
+    """Path to backup directory"""
+    backupPath: String
+
+    """Number of backup files"""
+    backupCount: Int
+
+    """Minutes since last backup"""
+    lastBackupAge: Int
+
+    """Minutes until next backup (-1 = will backup on next write)"""
+    nextBackupIn: Int
+
     """Known MCP config file locations"""
     mcpConfigPaths: [MCPConfigPath!]
   }
@@ -307,6 +322,7 @@ EXAMPLES:
   }
 
 TIPS:
+  ⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
   • Use summaryOnly: true for search, then memory(hash) for full content
   • Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
   • Batch related queries to reduce round-trips

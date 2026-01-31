@@ -28,6 +28,8 @@ export interface SimpleMemoryConfig {
     interval?: number;
     /** Number of backups to keep */
     keep?: number;
+    /** Source identifier (e.g., "work", "personal") */
+    source?: string;
   };
   
   /** Cloud storage safe mode (uses DELETE journal instead of WAL) */
@@ -147,13 +149,14 @@ export function getDatabasePath(): { path: string; isDefault: boolean } {
  * 2. config.json backup settings
  * 3. Defaults (backups disabled)
  */
-export function getBackupConfig(): { path?: string; interval: number; keep: number } {
+export function getBackupConfig(): { path?: string; interval: number; keep: number; source?: string } {
   const fileConfig = loadConfigFile();
   
   return {
     path: process.env.MEMORY_BACKUP_PATH || fileConfig.backup?.path,
     interval: parseInt(process.env.MEMORY_BACKUP_INTERVAL || '', 10) || fileConfig.backup?.interval || 0,
     keep: parseInt(process.env.MEMORY_BACKUP_KEEP || '', 10) || fileConfig.backup?.keep || 10,
+    source: process.env.MEMORY_BACKUP_SOURCE || fileConfig.backup?.source,
   };
 }
 
@@ -192,11 +195,12 @@ export function initConfigFile(): { path: string; created: boolean } {
   "_database_comment": "Database path (default: ~/.simple-memory/memory.db)",
   "database": null,
   
-  "_backup_comment": "Backup settings: path=directory, interval=minutes between backups (0=every write), keep=number to retain",
+  "_backup_comment": "Backup settings: path=directory, interval=minutes between backups (0=every write), keep=number to retain, source=identifier",
   "backup": {
     "path": null,
     "interval": 0,
-    "keep": 10
+    "keep": 10,
+    "source": null
   },
   
   "_cloudSafe_comment": "Use DELETE journal instead of WAL for cloud storage (OneDrive/Dropbox) - slower but safer",

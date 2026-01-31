@@ -14,47 +14,47 @@ The time range search feature allows filtering memories by their creation date u
 
 ### Search memories from last 7 days
 ```bash
-simple-memory search-memory --days-ago 7
+simple-memory search --days-ago 7
 ```
 
 ### Search memories from last 30 days
 ```bash
-simple-memory search-memory --days-ago 30
+simple-memory search --days-ago 30
 ```
 
 ### Search memories created today (daysAgo 0)
 ```bash
-simple-memory search-memory --days-ago 0
+simple-memory search --days-ago 0
 ```
 
 ### Search with specific date range
 ```bash
-simple-memory search-memory --start-date "2025-01-01" --end-date "2025-01-31"
+simple-memory search --start-date "2025-01-01" --end-date "2025-01-31"
 ```
 
 ### Search with start date only (from date onwards)
 ```bash
-simple-memory search-memory --start-date "2025-01-01"
+simple-memory search --start-date "2025-01-01"
 ```
 
 ### Search with end date only (up to date)
 ```bash
-simple-memory search-memory --end-date "2025-01-31"
+simple-memory search --end-date "2025-01-31"
 ```
 
 ### Combine content search with time filter
 ```bash
-simple-memory search-memory --query "project" --days-ago 7
+simple-memory search --query "project" --days-ago 7
 ```
 
 ### Combine tag search with time filter
 ```bash
-simple-memory search-memory --tags "bug,fix" --days-ago 3
+simple-memory search --tags "bug,fix" --days-ago 3
 ```
 
 ### Combine query, tags, and time filter
 ```bash
-simple-memory search-memory --query "database" --tags "project" --days-ago 14
+simple-memory search --query "database" --tags "project" --days-ago 14
 ```
 
 ## MCP Tool Examples
@@ -99,31 +99,31 @@ simple-memory search-memory --query "database" --tags "project" --days-ago 14
 ### 1. Find Recent Work
 Search for memories created in the last few days to recall recent work:
 ```bash
-simple-memory search-memory --days-ago 3
+simple-memory search --days-ago 3
 ```
 
 ### 2. Monthly Review
 Review all memories from a specific month:
 ```bash
-simple-memory search-memory --start-date "2025-01-01" --end-date "2025-01-31"
+simple-memory search --start-date "2025-01-01" --end-date "2025-01-31"
 ```
 
 ### 3. Recent Project Updates
 Find project-related memories from the last week:
 ```bash
-simple-memory search-memory --tags "project" --days-ago 7
+simple-memory search --tags "project" --days-ago 7
 ```
 
 ### 4. Bug Triage
 Find recent bug-related memories:
 ```bash
-simple-memory search-memory --tags "bug" --days-ago 14
+simple-memory search --tags "bug" --days-ago 14
 ```
 
 ### 5. Quarterly Planning
 Search for planning notes from Q1:
 ```bash
-simple-memory search-memory --query "planning" --start-date "2025-01-01" --end-date "2025-03-31"
+simple-memory search --query "planning" --start-date "2025-01-01" --end-date "2025-03-31"
 ```
 
 ## Implementation Details

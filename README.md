@@ -308,9 +308,10 @@ Just add to your MCP config and start using it:
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
 | `MEMORY_DB` | Database file path | `~/.simple-memory/memory.db` | `/home/user/memories.db` |
-| `MEMORY_BACKUP_PATH` | Backup directory (optional) | None | `/home/user/backups` |
-| `MEMORY_BACKUP_INTERVAL` | Minutes between backups | `0` (disabled) | `180` |
-| `MEMORY_BACKUP_KEEP` | Number of backups to keep | `10` | `24` |
+| `MEMORY_BACKUP_PATH` | Backup directory (creates JSON exports) | None (disabled) | `/home/user/backups` |
+| `MEMORY_BACKUP_INTERVAL` | Minutes between backups (0=every write) | `0` | `180` |
+| `MEMORY_BACKUP_KEEP` | Number of JSON backups to keep | `10` | `24` |
+| `MEMORY_BACKUP_SOURCE` | Source identifier in backups (optional) | hostname | `work` or `personal` |
 | `MEMORY_CLOUD_SAFE` | Cloud storage safe mode | `false` | `true` |
 | `MEMORY_DEBUG` | Enable debug logging in CLI mode | `false` | `true` |
 | `DEBUG` | Enable debug logging (MCP server) | `false` | `true` |
@@ -343,7 +344,8 @@ For power users who want to control where the database is stored:
         "MEMORY_DB": "/home/user/memory.db",
         "MEMORY_BACKUP_PATH": "/home/user/OneDrive/MCP-Backups",
         "MEMORY_BACKUP_INTERVAL": "180",
-        "MEMORY_BACKUP_KEEP": "24"
+        "MEMORY_BACKUP_KEEP": "24",
+        "MEMORY_BACKUP_SOURCE": "work"
       }
     }
   }
@@ -351,9 +353,15 @@ For power users who want to control where the database is stored:
 ```
 
 **💡 Backup Strategy:**
+- **JSON export format** - Human-readable, portable backups
 - **Lazy backups** - Only backs up after write operations
 - **Throttled** - Won't backup again until interval passes
+- **Automatic cleanup** - Keeps last N backups, deletes old ones
 - **Efficient** - No wasted backups when idle
+
+**Backup Files:** `smem_auto_2026-01-31_20-13-19.json` (includes all memories + metadata)
+
+**To restore from backup:** Use `simple-memory import-memory --input backup.json`
 
 **⚠️ Cloud Storage Best Practices:**
 - ✅ **Recommended**: Store database locally, backup to cloud (as shown above)
