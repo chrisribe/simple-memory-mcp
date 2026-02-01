@@ -1,21 +1,19 @@
-#!/usr/bin/env node
+/**
+ * Configure MCP clients (VS Code, Claude Desktop) for simple-memory
+ * 
+ * Detects installed clients and adds simple-memory-mcp configuration
+ */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
-
-/**
- * Automatically configure VS Code MCP settings for simple-memory
- * Creates/updates mcp.json in VS Code user directory
- * 
- * Detects if running from source (npm run setup) vs npm install and configures appropriately
- */
+import { initConfigFile } from '../utils/config.js';
 
 // Detect if running from git source (developers) or npm install (users)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const isFromSource = existsSync(join(__dirname, '..', '.git')) || existsSync(join(__dirname, '..', 'src'));
+const isFromSource = existsSync(join(__dirname, '..', '..', '.git')) || existsSync(join(__dirname, '..', '..', 'src'));
 
 // For source/dev: use linked local command
 // For npm users: use npx (always gets latest from registry)
@@ -57,10 +55,21 @@ const MCP_CONFIG_WITH_COMMENTS = isFromSource
   }
 }`;
 
-function getVSCodeConfigPaths() {
+interface ConfigPath {
+  name: string;
+  path: string;
+}
+
+interface ConfigResult {
+  success: boolean;
+  reason: string;
+  path?: string;
+}
+
+function getVSCodeConfigPaths(): ConfigPath[] {
   const platform = process.platform;
   const home = homedir();
-  const paths = [];
+  const paths: ConfigPath[] = [];
   
   if (platform === 'win32') {
     const appData = process.env.APPDATA || join(home, 'AppData', 'Roaming');
@@ -85,7 +94,7 @@ function getVSCodeConfigPaths() {
   return paths;
 }
 
-function configureVSCode(name, vscodeUserPath) {
+function configureVSCode(name: string, vscodeUserPath: string): ConfigResult {
   const mcpJsonPath = join(vscodeUserPath, 'mcp.json');
   
   if (!existsSync(vscodeUserPath)) {
@@ -94,31 +103,29 @@ function configureVSCode(name, vscodeUserPath) {
   
   console.log(`\n✅ ${name} detected!`);
   
-  let mcpConfig = {};
-  let serversProp = 'servers'; // Both stable and Insiders use "servers"
+  let mcpConfig: Record<string, any> = {};
+  let serversProp = 'servers';
   
   // Read existing mcp.json if it exists
   if (existsSync(mcpJsonPath)) {
     try {
       mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
       
-      // Detect which property is used (both versions use "servers")
+      // Detect which property is used
       if (mcpConfig.servers) {
         serversProp = 'servers';
       } else if (mcpConfig.mcpServers) {
         serversProp = 'mcpServers';
       }
       
-      // Ensure the property exists
       if (!mcpConfig[serversProp]) {
         mcpConfig[serversProp] = {};
       }
-    } catch (error) {
+    } catch {
       console.log(`⚠️  Could not parse mcp.json for ${name}`);
       return { success: false, reason: 'parse-error' };
     }
   } else {
-    // New file - use "servers" (standard format for both stable and Insiders)
     mcpConfig[serversProp] = {};
   }
   
@@ -136,17 +143,16 @@ function configureVSCode(name, vscodeUserPath) {
     writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2), 'utf8');
     console.log(`✅ Added to ${name} mcp.json`);
     return { success: true, reason: 'configured', path: mcpJsonPath.replace(/\\/g, '/') };
-  } catch (error) {
+  } catch (error: any) {
     console.error(`❌ Failed to update ${name} mcp.json:`, error.message);
     return { success: false, reason: 'write-error' };
   }
 }
 
-function main() {
+export function runSetup(): void {
   const vscodeInstalls = getVSCodeConfigPaths();
   let configuredCount = 0;
   let foundCount = 0;
-  let mcpJsonPaths = [];
   
   console.log('\n🔧 Checking for VS Code installations...');
   
@@ -154,9 +160,6 @@ function main() {
     const result = configureVSCode(install.name, install.path);
     if (result.success) {
       foundCount++;
-      if (result.path) {
-        mcpJsonPaths.push(result.path);
-      }
       if (result.reason === 'configured') {
         configuredCount++;
       }
@@ -173,18 +176,16 @@ function main() {
     console.log('\n✅ All installations already configured');
   }
   
-  // Show example config and instructions (for all cases)
-  if (foundCount > 0) {
-    console.log('\n💡 Example configuration with all options:');
-    console.log(MCP_CONFIG_WITH_COMMENTS);
-    console.log('\n💡 To find and edit your config file:');
-    console.log('   Run: node dist/index.js stats');
-    if (configuredCount > 0) {
-      console.log('\n📖 Configuration docs: https://github.com/chrisribe/simple-memory-mcp#configuration');
-    }
+  // Initialize config file (creates ~/.simple-memory/config.json if not exists)
+  console.log('\n🔧 Checking config file...');
+  const { path: configPath, created } = initConfigFile();
+  if (created) {
+    console.log(`✅ Created config file: ${configPath}`);
   } else {
-    console.log(MCP_CONFIG_WITH_COMMENTS);
+    console.log(`✅ Config file exists: ${configPath}`);
   }
+  
+  console.log('\n💡 Example MCP configuration with all options:');
+  console.log(MCP_CONFIG_WITH_COMMENTS);
+  console.log('\n📖 Configuration docs: https://github.com/chrisribe/simple-memory-mcp#configuration');
 }
-
-main();

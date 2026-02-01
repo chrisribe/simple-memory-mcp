@@ -289,7 +289,7 @@ Store SILENTLY - don't announce saves.
 
 SCHEMA:
   Query {
-    memories(query: String, tags: [String], limit: Int, summaryOnly: Boolean, previewLength: Int): [Memory!]!
+    memories(query: String, tags: [String], limit: Int, daysAgo: Int, startDate: String, endDate: String, minRelevance: Float, summaryOnly: Boolean, previewLength: Int): [Memory!]!
     memory(hash: String!): Memory
     related(hash: String!, limit: Int): [Memory!]!
     stats: Stats!
@@ -307,6 +307,11 @@ SCHEMA:
 EXAMPLES:
   # Search with summaries (efficient)
   { memories(query: "typescript", summaryOnly: true) { hash title tags } }
+  
+  # Time-filtered searches
+  { memories(daysAgo: 7) { hash title createdAt } }
+  { memories(startDate: "2025-01-01", endDate: "2025-01-31") { hash title } }
+  { memories(query: "bug", tags: ["urgent"], daysAgo: 3) { hash title } }
   
   # Get full content by hash
   { memory(hash: "abc123...") { content tags } }
