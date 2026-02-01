@@ -17,7 +17,7 @@
   },
   "scripts": {
     "setup": "npm install && npm run build && npm link && npm run configure",
-    "configure": "node scripts/setup-vscode.js",
+    "configure": "node dist/index.js setup",
     "build": "tsc",
     "build:release": "node scripts/bump-version.js patch && tsc",
     "postbuild": "node -e \"if (process.platform !== 'win32') { require('child_process').execSync('chmod +x dist/index.js'); }\"",

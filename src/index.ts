@@ -558,6 +558,13 @@ async function main() {
       process.exit(0);
     }
 
+    // Handle setup command - configures VS Code and Claude Desktop
+    if (command === 'setup') {
+      const { runSetup } = await import('./setup/configure-mcp-clients.js');
+      runSetup();
+      process.exit(0);
+    }
+
     // Handle export/import (keep these as-is from tool registry)
     if (command === 'export-memory' || command === 'import-memory') {
       try {
