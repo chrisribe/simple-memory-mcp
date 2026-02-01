@@ -218,7 +218,7 @@ npm run test:migration # Migration tests
 | [Examples](docs/examples.md) | Real-world usage scenarios with AI assistants |
 | [Design Philosophy](docs/design-philosophy.md) | Trade-offs and architectural decisions |
 | [Performance](docs/performance.md) | Benchmarks and optimization details |
-| [Web Server](docs/features/WEB-SERVER.md) | Optional visual web interface |
+| [Web Server](docs/features/web-server.md) | Optional visual web interface |
 | [Changelog](CHANGELOG.md) | Version history |
 
 **Developer Docs:** [docs/dev/](docs/dev/) - Manual testing, publishing guide, optimization history
