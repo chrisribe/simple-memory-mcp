@@ -8,6 +8,8 @@ A blazingly fast Model Context Protocol (MCP) server for persistent memory stora
 
 Perfect for AI assistants that need to remember context across conversations, store project notes, or build a personal knowledge base.
 
+> **Simple by design:** Keyword search, not semantic. Local SQLite, not cloud. Zero setup, not configuration hell. If you need vector embeddings or team collaboration, see [alternatives](docs/design-philosophy.md#when-to-use-something-else).
+
 ---
 
 ## ✨ Features
@@ -181,7 +183,7 @@ Backup and restore memories as JSON files.
 }
 ```
 
-📖 **Full configuration guide:** [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+📖 **Full configuration guide:** [docs/configuration.md](docs/configuration.md)
 - Environment variables reference
 - Backup strategies
 - Cloud storage best practices
@@ -212,12 +214,14 @@ npm run test:migration # Migration tests
 
 | Guide | Description |
 |-------|-------------|
-| [Configuration](docs/CONFIGURATION.md) | Full config reference, backups, cloud storage |
-| [Examples](docs/EXAMPLES.md) | Real-world usage scenarios with AI assistants |
-| [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) | Trade-offs and architectural decisions |
-| [Performance](docs/PERFORMANCE.md) | Benchmarks and optimization details |
-| [NPM Publishing](docs/NPM_PUBLISHING.md) | For package maintainers |
+| [Configuration](docs/configuration.md) | Full config reference, backups, cloud storage |
+| [Examples](docs/examples.md) | Real-world usage scenarios with AI assistants |
+| [Design Philosophy](docs/design-philosophy.md) | Trade-offs and architectural decisions |
+| [Performance](docs/performance.md) | Benchmarks and optimization details |
+| [Web Server](docs/features/WEB-SERVER.md) | Optional visual web interface |
 | [Changelog](CHANGELOG.md) | Version history |
+
+**Developer Docs:** [docs/dev/](docs/dev/) - Manual testing, publishing guide, optimization history
 
 ---
 
