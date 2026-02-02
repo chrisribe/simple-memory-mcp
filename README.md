@@ -4,9 +4,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 
-A blazingly fast Model Context Protocol (MCP) server for persistent memory storage with intelligent tagging and full-text search.
+Give your AI assistant persistent memory across sessions.
 
-Perfect for AI assistants that need to remember context across conversations, store project notes, or build a personal knowledge base.
+**The problem:** AI assistants forget everything when you start a new conversation. Your preferences, project context, decisions - all gone.
+
+**The solution:** Simple Memory lets AI store and retrieve information that persists forever. Local SQLite database, zero cloud, sub-millisecond fast.
+
+**Why not RAG?** RAG systems need vector databases, embeddings, chunking strategies, and ongoing maintenance. Simple Memory is just keyword search in SQLite - no ML infrastructure, no API costs, works offline. Perfect for personal knowledge that doesn't need semantic similarity.
+
+---
+
+## How It Works
+
+**You:** "Remember that I prefer TypeScript over JavaScript and use 4-space indentation"
+
+**AI:** *stores this automatically*
+
+*...days later, new session...*
+
+**You:** "Help me set up a new project"
+
+**AI:** *searches memory, finds your preferences* → Sets up TypeScript with 4-space indentation
+
+The AI handles storage and retrieval automatically. You just chat naturally.
 
 > **Simple by design:** Keyword search, not semantic. Local SQLite, not cloud. Zero setup, not configuration hell. If you need vector embeddings or team collaboration, see [alternatives](docs/design-philosophy.md#when-to-use-something-else).
 
@@ -14,13 +34,12 @@ Perfect for AI assistants that need to remember context across conversations, st
 
 ## ✨ Features
 
-- 🧠 **Auto-Capture** - LLM proactively stores important information during conversations
-- 🚀 **Sub-millisecond Performance** - 2,000-10,000 operations/second
-- 🔍 **Full-Text Search** - SQLite FTS5 with 0.14ms average query time
-- 🏷️ **Smart Tagging** - Organize and filter memories with tags
-- 🔗 **Auto-Relationships** - Automatically link related memories
-- 💾 **Automatic Backups** - Optional lazy backups to cloud storage
-- 📦 **Zero Config** - Works out of the box with sensible defaults
+- 🧠 **Persistent Memory** - Survives across sessions, restarts, forever
+- 🔍 **Full-Text Search** - Find memories by keyword, tags, or content
+- 🏷️ **Smart Tagging** - Organize memories with tags
+- 💾 **Automatic Backups** - Optional sync to OneDrive/Dropbox
+- 📦 **Zero Config** - Works out of the box
+- 🚀 **Fast** - Sub-millisecond queries, 2,000-10,000 ops/sec
 
 ---
 
@@ -112,27 +131,19 @@ Run `simple-memory --help` for all options.
 
 ---
 
-## 🛠️ Available Tools
+## 🛠️ MCP Tools
 
-Simple Memory exposes **3 MCP tools**:
+The AI uses these tools automatically - you don't need to call them directly.
 
-### `memory-graphql`
+| Tool | Purpose |
+|------|---------|
+| `memory-graphql` | Store, search, update, delete memories |
+| `export-memory` | Backup memories to JSON file |
+| `import-memory` | Restore memories from JSON file |
 
-The primary tool - handles all memory operations via GraphQL.
+<details>
+<summary>GraphQL Schema (for developers)</summary>
 
-```graphql
-# Query
-{ memories(query: "typescript", limit: 5) { hash title tags } }
-{ memory(hash: "abc...") { content tags } }
-{ stats { totalMemories } }
-
-# Mutations
-mutation { store(content: "Note", tags: ["tag"]) { hash } }
-mutation { update(hash: "abc...", content: "Updated") { newHash } }
-mutation { delete(hash: "abc...") { success } }
-```
-
-**Schema:**
 ```graphql
 type Memory { hash, content, title, preview, tags, createdAt, relevance }
 type Query {
@@ -148,9 +159,7 @@ type Mutation {
 }
 ```
 
-### `export-memory` / `import-memory`
-
-Backup and restore memories as JSON files.
+</details>
 
 ---
 
