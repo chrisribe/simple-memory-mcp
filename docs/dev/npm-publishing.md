@@ -1,294 +1,70 @@
 # NPM Publishing Guide
 
-## Status: ✅ Ready to Publish
-
-- Package name `simple-memory-mcp` is available (was unpublished 2025-06-21)
-- All tests pass, build works, 0 security vulnerabilities
-- LICENSE file included, documentation complete
-
----
-
-## Quick Publish
+## Quick Publish (Manual)
 
 ```bash
-# 1. Login
 npm login
-
-# 2. Verify
 npm audit && npm test && npm run build
-
-# 3. Publish (with provenance for trust)
-npm publish --provenance --otp=123456  # add OTP if 2FA enabled
-
-# 4. Tag release (auto-gets version from package.json)
-VERSION=$(node -p "require('./package.json').version")
-git tag -a "v$VERSION" -m "Release v$VERSION"
-git push origin "v$VERSION"
+npm publish --provenance --otp=123456
 ```
+
+> Tags are created automatically by `auto-version-bump.yml` on commits to main.
 
 ---
 
-## Prerequisites
+## GitHub Actions (Recommended)
 
-**One-time setup:**
+1. Go to: https://github.com/chrisribe/simple-memory-mcp/actions/workflows/publish.yml
+2. Click "Run workflow" → optionally enable dry-run
+3. Creates GitHub Release + publishes to npm with provenance
 
-1. **NPM Account**: Sign up at https://npmjs.com or run `npm adduser`
-2. **Enable 2FA**: Recommended for security (https://npmjs.com/settings/cribe/tfa)
-3. **Verify login**: `npm whoami` (should show `cribe`)
-
----
-
-## Pre-Publish Checklist
-
-Run these before every publish:
-
-```bash
-# Security & Quality
-npm audit                    # Must show 0 vulnerabilities
-npm test                     # Must pass all tests
-npm run build                # Must succeed
-
-# Package verification
-npm pack --dry-run           # Review what gets published
-
-# Version check
-cat package.json | grep version
-```
-
-**Critical checks:**
-- [ ] LICENSE file exists
-- [ ] Version follows semver (MAJOR.MINOR.PATCH)
-- [ ] CHANGELOG.md updated
-- [ ] No secrets in code
-- [ ] Tests pass
+**Required secret:** `NPM_TOKEN` (Automation type, 90-day max expiry)
+- Generate: https://npmjs.com/settings/cribe/tokens
+- Add: Settings → Secrets → `NPM_TOKEN`
 
 ---
 
 ## Version Management
 
+Versions auto-bump (patch) on commits to main via `auto-version-bump.yml`.
+
+Manual bumps:
 ```bash
-# Automated (GitHub Actions does this on main branch commits)
-# Commits to main auto-bump patch version
-
-# Manual version bumps
-npm run version:patch        # 1.1.1 → 1.1.2 (bug fixes)
-npm run version:minor        # 1.1.1 → 1.2.0 (new features)
-npm run version:major        # 1.1.1 → 2.0.0 (breaking changes)
+npm run version:patch   # 1.1.1 → 1.1.2
+npm run version:minor   # 1.1.1 → 1.2.0  
+npm run version:major   # 1.1.1 → 2.0.0
 ```
-
-**Semantic versioning:**
-- **PATCH**: Bug fixes only
-- **MINOR**: New features, backward compatible
-- **MAJOR**: Breaking changes
 
 ---
 
-## Publishing Options
-
-### Option 1: Manual Publishing (Recommended for First Release)
-
-**When to use:** Full control, first-time publish, infrequent releases
+## Post-Publish Verification
 
 ```bash
-npm publish --provenance --otp=123456
-```
-
-### Option 2: GitHub Actions (Manual Trigger)
-
-**When to use:** Consistent environment, provenance support, still manual control
-
-1. Go to: https://github.com/chrisribe/simple-memory-mcp/actions/workflows/publish.yml
-2. Click "Run workflow"
-3. Select version bump type (patch/minor/major)
-4. Optionally enable dry-run to preview
-5. Click "Run workflow"
-
-**Benefits:**
-- Runs tests before publish
-- Adds npm provenance (build attestation)
-- Creates git tag + GitHub Release automatically
-- Consistent Linux build environment
-
-**Setup required:**
-1. Generate NPM token: https://npmjs.com/settings/cribe/tokens (use "Automation" type)
-   - Set "Packages and scopes" to **Read and write**
-   - Max expiration is **90 days** - set a calendar reminder to rotate
-2. Add as GitHub secret: Settings → Secrets → `NPM_TOKEN`
-
-**Token rotation (every 90 days):**
-1. Generate new token at npm
-2. Update GitHub secret with new value
-3. Old token can be deleted after confirming workflow works
-
-### Option 3: Fully Automated (Advanced)
-
-**When to use:** Mature packages with CI/CD
-
-Add to `.github/workflows/publish.yml`:
-
-```yaml
-name: Publish to NPM
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
-
-**Setup required:**
-1. Generate NPM token: https://npmjs.com/settings/cribe/tokens
-2. Add as GitHub secret: Settings → Secrets → `NPM_TOKEN`
-3. Create GitHub release to trigger publish
-
-**⚠️ Caution with automation:**
-- Only recommended after several successful manual publishes
-- Requires NPM token (security consideration)
-- Can't use 2FA with automated publishing
-- Consider "automation" token type with IP restrictions
-- Test thoroughly in dry-run mode first
-
-**Most packages use manual publishing** - automation adds complexity and security risks for minimal benefit unless you publish frequently.
-
----
-
-## Post-Publish
-
-```bash
-# 1. Verify on NPM
 npm view simple-memory-mcp
+npm install -g simple-memory-mcp && simple-memory --version
+```
 
-# 2. Test installation
-npm install -g simple-memory-mcp
-simple-memory --version
-npm uninstall -g simple-memory-mcp
+---
 
-# 3. Create GitHub Release
-# Go to: https://github.com/chrisribe/simple-memory-mcp/releases/new
-# - Tag: v1.1.1
-# - Title: v1.1.1
-# - Description: Copy from CHANGELOG.md
+## Troubleshooting
+
+| Error | Fix |
+|-------|-----|
+| Permission denied | `npm login` |
+| Version exists | `npm run version:patch` then publish |
+| Vulnerabilities | `npm audit fix` |
+| Package too large | Check `files` in package.json |
+
+**Rollback:**
+```bash
+npm deprecate simple-memory-mcp@1.2.0 "Use 1.2.1"  # preferred
+npm unpublish simple-memory-mcp@1.2.0              # within 72h only
 ```
 
 ---
 
 ## Maintenance
 
-### Weekly
-- Monitor GitHub issues
-- Check `npm audit` for new vulnerabilities
-
-### Monthly
-```bash
-npm outdated              # Check for updates
-npm update                # Update minor/patch versions
-npm test                  # Verify still works
-```
-
-### Quarterly (Every 90 days)
-- Rotate NPM_TOKEN in GitHub secrets (npm tokens expire after max 90 days)
-- Review and update dependencies
-
-### Before Major Dependency Updates
-```bash
-# Update one at a time
-npm install package@latest
-npm test                  # Test thoroughly
-npm run build
-```
-
-### Common Beginner Mistakes
-
-1. **Publishing without testing install**
-   - Always test: `npm pack && npm install -g ./simple-memory-mcp-*.tgz`
-
-2. **Forgetting version bump**
-   - Use: `npm run version:patch` before publish
-
-3. **Not checking package contents**
-   - Review: `npm pack --dry-run`
-
-4. **Ignoring npm audit warnings**
-   - Fix before publish: `npm audit fix`
-
-5. **Publishing with dirty git state**
-   - Check: `git status` should be clean
-
-6. **Not creating git tags**
-   - Always tag: `git tag -a v1.1.1 -m "Release"`
-
-7. **Testing only in dev environment**
-   - Test global install on clean machine
-
-8. **Not updating CHANGELOG**
-   - Document all changes before release
-
----
-
-## Troubleshooting
-
-**"Permission denied"**
-```bash
-npm login
-```
-
-**"Version already exists"**
-```bash
-npm run version:patch
-npm publish
-```
-
-**"Vulnerabilities found"**
-```bash
-npm audit fix
-npm test  # Verify still works
-```
-
-**"Package too large"**
-```bash
-npm pack --dry-run
-# Check "files" array in package.json
-```
-
-**Rollback a bad publish**
-```bash
-# Option 1: Deprecate (preferred)
-npm deprecate simple-memory-mcp@1.2.0 "Use 1.2.1 instead"
-
-# Option 2: Unpublish (within 72 hours only)
-npm unpublish simple-memory-mcp@1.2.0
-```
-
----
-
-## Resources
-
-- **NPM Docs**: https://docs.npmjs.com/
-- **Semantic Versioning**: https://semver.org/
-- **Package.json Guide**: https://docs.npmjs.com/cli/configuring-npm/package-json
-
----
-
-## TL;DR
-
-```bash
-npm login
-npm audit && npm test && npm run build
-npm run version:patch
-npm publish --provenance --otp=123456
-git tag -a v$(node -p "require('./package.json').version") -m "Release" && git push --follow-tags
-```
+- **Quarterly:** Rotate `NPM_TOKEN` (90-day expiry)
+- **Monthly:** `npm outdated && npm update`
+- **Weekly:** Check `npm audit`

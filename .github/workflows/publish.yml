@@ -1,18 +1,9 @@
 name: Publish to NPM
 
-# Manual trigger only - you control when to publish
+# Manual trigger only - publishes current version to npm
 on:
   workflow_dispatch:
     inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
       dry_run:
         description: 'Dry run (no actual publish)'
         required: false
@@ -48,13 +39,11 @@ jobs:
       - name: Build
         run: npm run build
       
-      - name: Bump version
+      - name: Get current version
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm run version:${{ inputs.version_bump }}
           VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "📦 Current version: $VERSION"
       
       - name: Dry run
         if: ${{ inputs.dry_run }}
@@ -67,14 +56,6 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
-      - name: Create git tag
-        if: ${{ !inputs.dry_run }}
-        run: |
-          git add package.json package-lock.json
-          git commit -m "Release v${{ env.VERSION }}"
-          git tag -a "v${{ env.VERSION }}" -m "Release v${{ env.VERSION }}"
-          git push origin HEAD --follow-tags
       
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
