@@ -49,6 +49,35 @@ Using Passport.js middleware pattern."
 
 ---
 
+## 🔄 Managing Context Limits
+
+**The problem:** Long sessions fill context. `/compact` helps but eventually you hit limits.
+
+**The workflow:**
+1. **Context getting full?** Just say:
+   ```
+   "Save current session to wip"
+   ```
+   AI automatically summarizes: what's done, what's next, key decisions.
+
+2. **Start fresh session:**
+   ```
+   "Load my wip" or "Where did I leave off?"
+   ```
+
+3. **Continue** - full context budget, exact state restored.
+
+**vs `/compact`:**
+| | `/compact` | Memory + New Session |
+|---|---|---|
+| Buys time | Yes, in same session | Yes, fresh session |
+| You control what's kept | No, auto-summarized | AI curates, you can refine |
+| Persists after session | No | Forever |
+
+**✅ Benefit:** Unlimited session length. Natural commands, AI handles the rest.
+
+---
+
 ## 💡 Research & Learnings
 
 **Document technical findings:**
