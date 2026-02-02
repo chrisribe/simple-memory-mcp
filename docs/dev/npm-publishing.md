@@ -41,7 +41,12 @@ npm run version:major   # 1.1.1 → 2.0.0
 
 ```bash
 npm view simple-memory-mcp
-npm install -g simple-memory-mcp && simple-memory --version
+
+# Test without affecting global/dev install:
+npx simple-memory-mcp --version
+
+# Or in temp dir:
+cd $(mktemp -d) && npm init -y && npm install simple-memory-mcp
 ```
 
 ---
