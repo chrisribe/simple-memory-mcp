@@ -25,32 +25,17 @@ export interface CliParser {
   (args: string[]): any;
 }
 
-export interface ToolCliMetadata {
-  positionalArgs?: {
-    name: string;
-    description: string;
-    required?: boolean;
-  }[];
-  options?: {
-    name: string;
-    description: string;
-    hasValue?: boolean;
-    example?: string;
-  }[];
-  examples?: string[];
-}
-
 // Tool interface that combines definition, handler, and optional CLI parser
 export interface Tool {
   definition: ToolDefinition; // MCP schema definition
   handler: ToolHandler;       // Business logic handler
   cliParser?: CliParser;      // Optional CLI argument parser
-  cliMetadata?: ToolCliMetadata; // Optional CLI metadata
 }
 
 // Export/Import feature types
 export interface ExportFilters {
   tags?: string[];
+  hashes?: string[];
   startDate?: Date;
   endDate?: Date;
   limit?: number;

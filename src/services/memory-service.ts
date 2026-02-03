@@ -840,16 +840,29 @@ export class MemoryService {
       throw new Error('Database not initialized');
     }
 
-    // Use existing search method to get memories
-    // Pass undefined for query to use tag search (if tags provided) or recent search (if no filters)
-    const memories = this.search(
-      undefined, // query - let search decide based on tags
-      filters?.tags,
-      filters?.limit || 1000, // default high limit for export
-      undefined, // daysAgo
-      filters?.startDate?.toISOString(),
-      filters?.endDate?.toISOString()
-    );
+    let memories: MemoryEntry[];
+
+    // If hashes are provided, fetch those specific memories
+    if (filters?.hashes && filters.hashes.length > 0) {
+      memories = [];
+      for (const hash of filters.hashes) {
+        const memory = this.getByHash(hash);
+        if (memory) {
+          memories.push(memory);
+        }
+      }
+    } else {
+      // Use existing search method to get memories
+      // Pass undefined for query to use tag search (if tags provided) or recent search (if no filters)
+      memories = this.search(
+        undefined, // query - let search decide based on tags
+        filters?.tags,
+        filters?.limit || 1000, // default high limit for export
+        undefined, // daysAgo
+        filters?.startDate?.toISOString(),
+        filters?.endDate?.toISOString()
+      );
+    }
     
     // Get relationships for each memory
     const exportedMemories: ExportedMemory[] = memories.map((memory: MemoryEntry) => {

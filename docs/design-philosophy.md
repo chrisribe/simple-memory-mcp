@@ -46,6 +46,55 @@ Skill Model:
 
 ---
 
+## Relevance Scoring (BM25)
+
+Simple Memory uses **BM25** ranking, the industry-standard algorithm for keyword search (same as Elasticsearch, Lucene, etc.).
+
+### How It Works
+
+When you search with a query, SQLite FTS5 computes a BM25 score that considers:
+- **Term frequency (TF):** How often your search terms appear in the memory
+- **Inverse document frequency (IDF):** Rare terms in your corpus are weighted higher
+- **Document length normalization:** Longer memories don't get unfairly boosted
+
+### Interpreting Relevance Scores
+
+Scores are normalized to 0-1 for usability:
+
+| Score | Meaning |
+|-------|---------|
+| 0.9-1.0 | Excellent match - most search terms present, likely exact topic |
+| 0.7-0.9 | Good match - relevant content, may be missing some terms |
+| 0.5-0.7 | Partial match - some relevance but not primary topic |
+| < 0.5 | Weak match - tangential mention or coincidental terms |
+
+### Using `minRelevance` Filter
+
+```graphql
+# Only return high-quality matches
+{ memories(query: "postgresql migration", minRelevance: 0.7) { hash title relevance } }
+```
+
+**When to use:**
+- High threshold (0.8+): When precision matters more than recall
+- Low threshold (0.3-0.5): When you want broader results for exploration
+- No threshold: When you want all matches, sorted by relevance
+
+### Why Not Semantic Search?
+
+BM25 search requires matching keywords. It won't find:
+- "database" when you search "PostgreSQL" (no synonym expansion)
+- Related concepts without shared terminology
+
+**This is intentional.** For personal memory with predictable terminology, keyword search is:
+- Debuggable (you know why something matched)
+- Fast (no embedding computation)
+- Transparent (inspect with SQL)
+
+If you need semantic similarity, use a vector database instead.
+
+---
+
 ## When to Use Something Else
 
 | Need | Use Instead |
@@ -72,4 +121,4 @@ Skill Model:
 
 Simple memory is **pragmatic, not sophisticated**. SQLite + FTS5 + GraphQL consolidation.
 
-If you need semantic search, team sync, or massive scale—use something else. For local, fast, private memory that just works: this is it.
+If you need semantic search, team sync, or massive scale...use something else. For local, fast, private memory that just works: this is it.

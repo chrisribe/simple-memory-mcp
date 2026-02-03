@@ -30,6 +30,37 @@ The AI handles storage and retrieval automatically. You just chat naturally.
 
 > **Simple by design:** Keyword search, not semantic. Local SQLite, not cloud. Zero setup, not configuration hell. If you need vector embeddings or team collaboration, see [alternatives](docs/design-philosophy.md#when-to-use-something-else).
 
+<details>
+<summary><strong>📖 End-to-End Example</strong></summary>
+
+**Session 1 (January):**
+```
+You: "I'm using PostgreSQL with TypeScript. Decided on Prisma ORM after 
+      evaluating TypeORM - better type inference and migrations."
+
+AI: → stores automatically with tags [tech-stack, database, decision]
+```
+
+**Session 2 (3 weeks later):**
+```
+You: "Setting up a new microservice, what database setup should I use?"
+
+AI: → searches memories, finds your PostgreSQL + Prisma decision
+   "Based on your previous work, you standardized on PostgreSQL with Prisma 
+    ORM. You chose it over TypeORM for the better type inference..."
+```
+
+**What got stored:**
+```json
+{
+  "content": "Tech stack decision: PostgreSQL + Prisma ORM. Chose over TypeORM for better type inference and cleaner migrations.",
+  "tags": ["tech-stack", "database", "decision"],
+  "relevance": 0.92  // BM25 score when searching "database setup"
+}
+```
+
+</details>
+
 ---
 
 ## ✨ Features
@@ -223,11 +254,11 @@ npm run test:migration # Migration tests
 
 | Guide | Description |
 |-------|-------------|
-| [Configuration](docs/configuration.md) | Full config reference, backups, cloud storage |
-| [Examples](docs/examples.md) | Real-world usage scenarios with AI assistants |
-| [Design Philosophy](docs/design-philosophy.md) | Trade-offs and architectural decisions |
+| [Configuration](docs/configuration.md) | Full config reference, backups, HTTP transport |
+| [Examples](docs/examples.md) | Real-world scenarios, namespace patterns |
+| [Design Philosophy](docs/design-philosophy.md) | Trade-offs, BM25 relevance scoring |
 | [Performance](docs/performance.md) | Benchmarks and optimization details |
-| [Web Server](docs/features/web-server.md) | Optional visual web interface |
+| [Web Server](docs/features/web-server.md) | Visual memory browser interface |
 | [Changelog](CHANGELOG.md) | Version history |
 
 **Developer Docs:** [docs/dev/](docs/dev/) - Manual testing, publishing guide, optimization history

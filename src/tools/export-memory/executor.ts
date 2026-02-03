@@ -18,6 +18,10 @@ export async function execute(args: any, context: ToolContext): Promise<ExportMe
   if (args.tags && args.tags.length > 0) {
     filters.tags = args.tags;
   }
+
+  if (args.hashes && args.hashes.length > 0) {
+    filters.hashes = args.hashes;
+  }
   
   if (args.daysAgo !== undefined) {
     const date = new Date();

@@ -5,54 +5,30 @@ import { parseCliArgs } from './cli-parser.js';
 export const memoryGraphqlTool: Tool = {
   definition: {
     name: 'memory-graphql',
-    description: `Execute GraphQL queries against the memory database. This single tool replaces multiple memory tools with a unified, flexible interface.
+    description: `GraphQL interface for simple-memory storage.
 
-🧠 PROACTIVE USAGE: Search memories at the START of conversations or when relevant topics arise to provide personalized, context-aware responses.
+💾 AUTO-CAPTURE: Store important info proactively (preferences, decisions, facts, learnings).
+🏷️ Include "auto" tag when auto-capturing. Store SILENTLY.
 
-💾 AUTO-CAPTURE: Use store mutation proactively to capture important information WITHOUT waiting for explicit requests.
-✓ Preferences, decisions, facts about people/projects, learnings, action items
-✗ Skip: greetings, temporary info, transactional exchanges
-Store SILENTLY - don't announce saves.
+⚠️ TOKEN COST: Use summaryOnly: true for search, then memory(hash) for full content.
 
 SCHEMA:
   Query {
-    memories(query: String, tags: [String], limit: Int, summaryOnly: Boolean, previewLength: Int): [Memory!]!
+    memories(query: String, tags: [String], limit: Int, daysAgo: Int, minRelevance: Float, summaryOnly: Boolean): [Memory!]!
     memory(hash: String!): Memory
-    related(hash: String!, limit: Int): [Memory!]!
     stats: Stats!
   }
-  
   Mutation {
     store(content: String!, tags: [String]): StoreResult!
     update(hash: String!, content: String!, tags: [String]): UpdateResult!
     delete(hash: String, tag: String): DeleteResult!
   }
-  
-  Memory { hash, content, title, preview, tags, createdAt, relevance }
-  Stats { version, totalMemories, totalRelationships, dbSize, schemaVersion }
+  Memory { hash, content, title, tags, createdAt, relevance }
 
 EXAMPLES:
-  # Search with summaries (efficient)
   { memories(query: "typescript", summaryOnly: true) { hash title tags } }
-  
-  # Get full content by hash
-  { memory(hash: "abc123...") { content tags } }
-  
-  # Store new memory
-  mutation { store(content: "Remember this", tags: ["note"]) { success hash } }
-  
-  # Batch operations in ONE call
-  {
-    search: memories(query: "mcp", limit: 3) { hash title }
-    recent: memories(limit: 5) { hash createdAt }
-    stats { totalMemories }
-  }
-
-TIPS:
-  ⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
-  • Use summaryOnly: true for search, then memory(hash) for full content
-  • Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
-  • Batch related queries to reduce round-trips`,
+  { memory(hash: "abc...") { content } }
+  mutation { store(content: "Prefers dark mode", tags: ["auto", "preference"]) { hash } }`,
     inputSchema: {
       type: 'object',
       properties: {
