@@ -254,7 +254,7 @@ npm run test:migration # Migration tests
 
 | Guide | Description |
 |-------|-------------|
-| [Configuration](docs/configuration.md) | Full config reference, backups, HTTP transport |
+| [Configuration](docs/configuration.md) | Full config reference, backups, cloud storage, HTTP transport |
 | [Examples](docs/examples.md) | Real-world scenarios, namespace patterns |
 | [Design Philosophy](docs/design-philosophy.md) | Trade-offs, BM25 relevance scoring |
 | [Performance](docs/performance.md) | Benchmarks and optimization details |
