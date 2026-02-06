@@ -31,6 +31,7 @@ export interface MemoryEntry {
   content: string;
   tags: string[];
   createdAt: string;
+  updatedAt?: string; // ISO timestamp of last update
   hash: string;
   relevance?: number; // BM25 relevance score (0-1), only present when using text search with minRelevance
 }
@@ -117,7 +118,8 @@ export class MemoryService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content TEXT NOT NULL,
         created_at TEXT,
-        hash TEXT UNIQUE
+        hash TEXT UNIQUE,
+        updated_at TEXT
       )
     `);
 
@@ -171,18 +173,19 @@ export class MemoryService {
     `);
 
     // Create trigger to automatically update FTS when memories are updated
-    // Note: External content FTS5 tables don't support UPDATE, must DELETE+INSERT
+    // External content FTS5 tables require the special 'delete' command, not regular DELETE
     this.db.exec(`
       CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-        DELETE FROM memories_fts WHERE rowid = old.id;
-        INSERT INTO memories_fts (rowid, content) VALUES (new.id, new.content);
+        INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
+        INSERT INTO memories_fts(rowid, content) VALUES(new.id, new.content);
       END;
     `);
 
     // Create trigger to automatically delete from FTS when memories are deleted
+    // External content FTS5 tables require the special 'delete' command, not regular DELETE
     this.db.exec(`
       CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-        DELETE FROM memories_fts WHERE rowid = old.id;
+        INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
       END;
     `);
 
@@ -190,8 +193,12 @@ export class MemoryService {
     // This is where all the magic happens - automatic, tracked, safe
     runMigrations(this.db, this.dbPath);
     
-    // Optimize FTS after migrations
-    DatabaseOptimizer.optimizeFTS(this.db);
+    // Optimize FTS after migrations (only if there are indexed rows)
+    // Running optimize on an empty external content FTS5 table can corrupt the index
+    const memCount = (this.db.prepare('SELECT COUNT(*) as count FROM memories').get() as any).count;
+    if (memCount > 0) {
+      DatabaseOptimizer.optimizeFTS(this.db);
+    }
 
     // Prepare statements for better performance
     this.prepareStatements();
@@ -222,7 +229,7 @@ export class MemoryService {
       `),
       updateMemory: this.db!.prepare(`
         UPDATE memories 
-        SET content = ?, hash = ?
+        SET content = ?, hash = ?, updated_at = ?
         WHERE id = ?
       `),
       
@@ -295,6 +302,11 @@ export class MemoryService {
    * Store a memory with optional tags
    */
   store(content: string, tags: string[] = []): string {
+    // Validate content
+    if (!content || content.trim().length === 0) {
+      throw new Error('Content cannot be empty');
+    }
+    
     // Validate content size
     if (content.length > this.maxContentSize) {
       throw new Error(`Content exceeds maximum size of ${this.maxContentSize} characters`);
@@ -335,7 +347,22 @@ export class MemoryService {
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         debugLogHash('MemoryService: Memory already exists with hash:', hash);
-        return hash; // Already exists
+        
+        // Merge new tags into existing memory
+        if (tags.length > 0) {
+          const existing = this.stmts.getMemoryByHash.get(hash) as any;
+          if (existing) {
+            for (const tag of tags) {
+              const normalizedTag = tag.trim().toLowerCase();
+              if (normalizedTag) {
+                this.stmts.insertTag.run(existing.id, normalizedTag); // INSERT OR IGNORE
+              }
+            }
+            debugLog('MemoryService: Merged tags into existing memory');
+          }
+        }
+        
+        return hash;
       }
       debugLog('MemoryService: Error storing memory:', error);
       throw error;
@@ -409,8 +436,8 @@ export class MemoryService {
       const fetchLimit = (tags && tags.length > 0) || minRelevance !== undefined ? limit * 5 : limit * 2;
       ftsResults = this.stmts.searchText.all(escapedQuery, fetchLimit);
       
-      // Filter by relevance score if threshold provided
-      if (minRelevance !== undefined && ftsResults.length > 0) {
+      // Always compute relevance scores for keyword searches
+      if (ftsResults.length > 0) {
         // BM25 returns negative scores (more negative = better match)
         // Normalize to 0-1 range where 1 is best match, 0 is worst
         const scores = ftsResults.map(r => Math.abs(r.rank));
@@ -418,11 +445,16 @@ export class MemoryService {
         const minScore = Math.min(...scores);
         const range = maxScore - minScore || 1;
         
-        ftsResults = ftsResults.filter((row: any) => {
+        ftsResults = ftsResults.map((row: any) => {
           const normalizedScore = 1 - ((Math.abs(row.rank) - minScore) / range);
-          row.relevance = normalizedScore; // Store for debugging/display
-          return normalizedScore >= minRelevance;
+          row.relevance = normalizedScore;
+          return row;
         });
+        
+        // Filter by relevance threshold if provided
+        if (minRelevance !== undefined) {
+          ftsResults = ftsResults.filter((row: any) => row.relevance >= minRelevance);
+        }
       }
       
       // Hydrate with tags from tags table
@@ -479,6 +511,7 @@ export class MemoryService {
       content: row.content,
       tags: row.tags || [],
       createdAt: row.created_at,
+      ...(row.updated_at && { updatedAt: row.updated_at }),
       hash: row.hash,
       ...(row.relevance !== undefined && { relevance: row.relevance })
     }));
@@ -640,6 +673,7 @@ export class MemoryService {
         content: row.content,
         tags: tagRows.map(t => t.tag),
         createdAt: row.created_at,
+        ...(row.updated_at && { updatedAt: row.updated_at }),
         hash: row.hash,
         relationshipType: row.relationship_type
       };
@@ -757,8 +791,9 @@ export class MemoryService {
     try {
       // Use transaction for atomicity
       const updateMemory = this.db.transaction(() => {
-        // Update memory content (FTS will be updated automatically by trigger)
-        this.stmts.updateMemory.run(newContent, newHash, existing.id);
+        // Update memory content and timestamp (FTS will be updated automatically by trigger)
+        const updatedAt = new Date().toISOString();
+        this.stmts.updateMemory.run(newContent, newHash, updatedAt, existing.id);
 
         // Update tags if provided
         if (newTags !== undefined) {
@@ -810,6 +845,7 @@ export class MemoryService {
       content: result.content,
       tags: tagRows.map(t => t.tag),
       createdAt: result.created_at,
+      ...(result.updated_at && { updatedAt: result.updated_at }),
       hash: result.hash
     };
   }
@@ -1058,6 +1094,7 @@ export class MemoryService {
       content: result.content,
       tags: tagRows.map(t => t.tag),
       createdAt: result.created_at,
+      ...(result.updated_at && { updatedAt: result.updated_at }),
       hash: result.hash
     };
   }

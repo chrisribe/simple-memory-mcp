@@ -24,6 +24,7 @@ function toGraphQLMemory(entry: MemoryEntry, previewLength: number = 100) {
     },
     tags: entry.tags || [],
     createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt || null,
     relevance: entry.relevance
   };
 }
@@ -111,12 +112,12 @@ export function createResolvers(memoryService: MemoryService) {
           
           if (args.hash) {
             const deleted = memoryService.delete(args.hash);
-            return { success: deleted, deletedCount: deleted ? 1 : 0 };
+            return { success: true, deletedCount: deleted ? 1 : 0 };
           }
           
           if (args.tag) {
             const count = memoryService.deleteByTag(args.tag);
-            return { success: count > 0, deletedCount: count };
+            return { success: true, deletedCount: count };
           }
           
           return { success: false, deletedCount: 0 };

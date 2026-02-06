@@ -228,6 +228,51 @@ export const migrations: Migration[] = [
       
       debugLog('Migration 5: Deprecated tags column dropped successfully');
     }
+  },
+  {
+    version: 6,
+    description: 'Add updated_at column to memories table',
+    up: (db: Database.Database) => {
+      debugLog('Migration 6: Adding updated_at column');
+      
+      db.exec(`ALTER TABLE memories ADD COLUMN updated_at TEXT`);
+      
+      debugLog('Migration 6: updated_at column added successfully');
+    }
+  },
+  {
+    version: 7,
+    description: 'Fix FTS triggers to use correct external content delete command',
+    up: (db: Database.Database) => {
+      debugLog('Migration 7: Fixing FTS triggers for external content tables');
+      
+      // Drop all existing FTS triggers
+      db.exec(`DROP TRIGGER IF EXISTS memories_au`);
+      db.exec(`DROP TRIGGER IF EXISTS memories_ad`);
+      
+      // Recreate UPDATE trigger with correct external content FTS5 delete command
+      // External content FTS5 tables don't support regular DELETE, must use special 'delete' command
+      db.exec(`
+        CREATE TRIGGER memories_au AFTER UPDATE ON memories BEGIN
+          INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
+          INSERT INTO memories_fts(rowid, content) VALUES(new.id, new.content);
+        END;
+      `);
+      
+      // Recreate DELETE trigger with correct external content FTS5 delete command
+      db.exec(`
+        CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
+          INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
+        END;
+      `);
+      
+      // Rebuild FTS index to heal any corruption from the old broken triggers
+      // This re-reads all content from the memories table and rebuilds the token index
+      debugLog('Migration 7: Rebuilding FTS index to fix any existing corruption...');
+      db.exec(`INSERT INTO memories_fts(memories_fts) VALUES('rebuild')`);
+      
+      debugLog('Migration 7: FTS triggers fixed and index rebuilt successfully');
+    }
   }
   // Future migrations go here - just add to the array!
 ];
@@ -279,28 +324,37 @@ export function runMigrations(db: Database.Database, dbPath: string): void {
   }
   
   // For fresh databases, mark as current version without running migrations
-  // since initDb() already creates the latest schema
+  // since initDb() already creates the latest schema.
+  // A truly fresh DB has no migrations AND no existing data.
+  // An old DB (pre-migration system) has no migrations but DOES have data.
   if (isFreshDatabase) {
-    const latestVersion = Math.max(...migrations.map(m => m.version));
-    debugLog(`Fresh database detected - marking as schema version ${latestVersion}`);
+    const memoryCount = db.prepare('SELECT COUNT(*) as count FROM memories').get() as any;
+    const isActuallyFresh = memoryCount.count === 0;
     
-    const recordMigration = db.prepare(
-      'INSERT INTO schema_migrations (version, description, applied_at) VALUES (?, ?, ?)'
-    );
-    
-    const markAsCurrent = db.transaction(() => {
-      for (const migration of migrations) {
-        recordMigration.run(
-          migration.version, 
-          migration.description + ' (baseline)', 
-          new Date().toISOString()
-        );
-      }
-    });
-    
-    markAsCurrent();
-    debugLog('Database schema initialized at latest version');
-    return;
+    if (isActuallyFresh) {
+      const latestVersion = Math.max(...migrations.map(m => m.version));
+      debugLog(`Fresh database detected - marking as schema version ${latestVersion}`);
+      
+      const recordMigration = db.prepare(
+        'INSERT INTO schema_migrations (version, description, applied_at) VALUES (?, ?, ?)'
+      );
+      
+      const markAsCurrent = db.transaction(() => {
+        for (const migration of migrations) {
+          recordMigration.run(
+            migration.version, 
+            migration.description + ' (baseline)', 
+            new Date().toISOString()
+          );
+        }
+      });
+      
+      markAsCurrent();
+      debugLog('Database schema initialized at latest version');
+      return;
+    } else {
+      debugLog('Pre-migration database detected with existing data - running all migrations');
+    }
   }
   
   // For existing databases, run actual migrations
