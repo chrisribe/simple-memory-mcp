@@ -27,7 +27,8 @@ import {
   generateMainHelp, 
   generateCommandHelp, 
   isGraphQLShortcut, 
-  buildGraphQLQuery 
+  buildGraphQLQuery,
+  getVersion
 } from './cli/commands.js';
 
 // Initialize server
@@ -183,7 +184,12 @@ async function main() {
   };
   
   if (cliArgs.length > 0) {
-    // CLI mode - check for help first
+    // CLI mode - check for version/help first (no DB init needed)
+    if (cliArgs[0] === '--version' || cliArgs[0] === '-v') {
+      console.log(getVersion());
+      process.exit(0);
+    }
+
     if (cliArgs[0] === '--help' || cliArgs[0] === '-h') {
       console.log(generateMainHelp());
       process.exit(0);

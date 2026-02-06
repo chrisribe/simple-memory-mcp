@@ -3,6 +3,8 @@
  * Help is auto-generated from these definitions - no duplication
  */
 
+import { readFileSync } from 'fs';
+
 export interface CommandOption {
   type: 'string' | 'number' | 'boolean';
   description: string;
@@ -275,6 +277,19 @@ export const COMMANDS: Record<string, CommandDefinition> = {
 };
 
 // =============================================================================
+// VERSION
+// =============================================================================
+
+export function getVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
+
+// =============================================================================
 // HELP GENERATORS
 // =============================================================================
 
@@ -336,7 +351,7 @@ export function generateMainHelp(): string {
 
   const lines: string[] = [
     '',
-    'simple-memory - Persistent memory storage for LLMs',
+    `simple-memory v${getVersion()} - Persistent memory storage for LLMs`,
     '',
     'USAGE:',
     '  simple-memory <command> [options]',
