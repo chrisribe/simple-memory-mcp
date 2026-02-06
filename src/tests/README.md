@@ -5,17 +5,17 @@ Test suite to verify the Simple Memory MCP Server functionality.
 ## Running Tests
 
 ```bash
-# Run GraphQL comprehensive test
-node dist/tests/graphql-comprehensive-test.js
+# Run core test suite (used by CI)
+npm test
+
+# Run all tests (comprehensive + export/import + migration + perf + time-range + backup)
+npm run test:all
 
 # Run performance benchmarks
-npm run test:perf
+npm run benchmark
 
-# Run export/import test
-node dist/tests/export-import-test.js
-
-# Run time-range test
-node dist/tests/time-range-test.js
+# Run any individual test directly
+node dist/tests/<test-file>.js
 ```
 
 ## Test Coverage
@@ -34,6 +34,7 @@ node dist/tests/time-range-test.js
 
 ### Other Tests
 - **Export/Import**: Backup and restore functionality
+- **Backup**: Backup service (throttling, cleanup, JSON format)
 - **Time Range**: Date-based filtering
 - **Migration**: Schema versioning and upgrades
 
@@ -45,9 +46,11 @@ src/tests/
 ├── graphql-comprehensive-test.ts  # Core GraphQL functionality (11 tests)
 ├── graphql-test.ts                # Quick GraphQL smoke test
 ├── export-import-test.ts          # Backup/restore testing
+├── backup-test.ts                 # Backup service testing
 ├── time-range-test.ts             # Date filtering tests
 ├── performance-test.ts            # Large content validation
-├── performance-benchmark.ts       # Speed benchmarks
+├── performance-benchmark.ts       # Comprehensive speed benchmarks
+├── graphql-performance-test.ts    # GraphQL layer overhead comparison
 └── migration-test.ts              # Schema migration testing
 ```
 
