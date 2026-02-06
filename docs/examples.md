@@ -196,6 +196,94 @@ project:app-name
 
 ---
 
+## 🏷️ Namespace & Multi-Project Patterns
+
+Simple Memory uses tags for namespacing. No schema changes needed.
+
+### Pattern 1: Single User, Multiple Projects
+
+Use `project:<name>` tag prefix:
+```graphql
+# Store project-specific memory
+mutation { store(content: "Uses React 18", tags: ["project:webapp", "tech"]) }
+
+# Query only that project
+{ memories(tags: ["project:webapp"]) { title } }
+```
+
+### Pattern 2: Work vs Personal Separation
+
+Use context prefixes:
+```graphql
+# Work memories
+tags: ["ctx:work", "team:engineering", "project:api"]
+
+# Personal memories  
+tags: ["ctx:personal", "learning", "side-project"]
+
+# Query only work context
+{ memories(tags: ["ctx:work"]) { title } }
+```
+
+### Pattern 3: Multiple Users (Same Machine)
+
+Option A: **Separate databases** (recommended for privacy)
+```json
+// User Alice's config
+{ "env": { "MEMORY_DB": "/home/alice/.memory/memory.db" } }
+
+// User Bob's config  
+{ "env": { "MEMORY_DB": "/home/bob/.memory/memory.db" } }
+```
+
+Option B: **User tag prefix** (shared database)
+```graphql
+# Store with user namespace
+mutation { store(content: "My preference", tags: ["user:alice", "pref"]) }
+
+# Query only your memories
+{ memories(tags: ["user:alice"]) { title } }
+```
+
+### Pattern 4: Time-Based Organization
+
+Combine with temporal queries:
+```graphql
+# This week's work on webapp
+{ memories(tags: ["project:webapp"], daysAgo: 7) { title createdAt } }
+
+# Q1 decisions
+{ memories(tags: ["decision"], startDate: "2025-01-01", endDate: "2025-03-31") { title } }
+```
+
+### Recommended Tag Taxonomy
+
+```
+# Namespaces (choose one pattern)
+project:<name>    # Per-project isolation
+ctx:<work|personal>  # Context separation
+user:<name>       # Multi-user (if shared DB)
+
+# Types (use consistently)
+decision          # Architectural/product decisions
+preference        # User preferences
+learning          # Technical learnings
+bug               # Bug encountered (add 'solved' when fixed)
+wip               # Work in progress
+idea              # Future ideas
+warning           # Anti-patterns, gotchas
+
+# Status
+active | parked | deprecated | solved
+
+# Priority
+critical | normal | fyi
+```
+
+**✅ Benefit:** Flexible organization without schema changes. Search by any combination.
+
+---
+
 ## 🔧 CLI Reference
 
 **For scripting/debugging:**

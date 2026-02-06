@@ -12,53 +12,44 @@ export const memoryGraphqlTool: Tool = {
 💾 AUTO-CAPTURE: Use store mutation proactively to capture important information WITHOUT waiting for explicit requests.
 ✓ Preferences, decisions, facts about people/projects, learnings, action items
 ✗ Skip: greetings, temporary info, transactional exchanges
-Store SILENTLY - don't announce saves.
+🏷️ Include "auto" tag when auto-capturing. Store SILENTLY - don't announce saves.
 
-SCHEMA:
-  Query {
-    memories(query: String, tags: [String], limit: Int, summaryOnly: Boolean, previewLength: Int): [Memory!]!
-    memory(hash: String!): Memory
-    related(hash: String!, limit: Int): [Memory!]!
-    stats: Stats!
-  }
-  
-  Mutation {
-    store(content: String!, tags: [String]): StoreResult!
-    update(hash: String!, content: String!, tags: [String]): UpdateResult!
-    delete(hash: String, tag: String): DeleteResult!
-  }
-  
-  Memory { hash, content, title, preview, tags, createdAt, relevance }
-  Stats { version, totalMemories, totalRelationships, dbSize, schemaVersion }
-
-EXAMPLES:
-  # Search with summaries (efficient)
-  { memories(query: "typescript", summaryOnly: true) { hash title tags } }
-  
-  # Get full content by hash
-  { memory(hash: "abc123...") { content tags } }
-  
-  # Store new memory
-  mutation { store(content: "Remember this", tags: ["note"]) { success hash } }
-  
-  # Batch operations in ONE call
-  {
-    search: memories(query: "mcp", limit: 3) { hash title }
-    recent: memories(limit: 5) { hash createdAt }
-    stats { totalMemories }
-  }
-
-TIPS:
-  ⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
-  • Use summaryOnly: true for search, then memory(hash) for full content
-  • Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
-  • Batch related queries to reduce round-trips`,
+⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
+• Use summaryOnly: true for search, then memory(hash) for full content
+• Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
+• Batch related queries to reduce round-trips`,
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'GraphQL query or mutation to execute'
+          description: `GraphQL query or mutation to execute.
+
+SCHEMA:
+  Query {
+    memories(query: String, tags: [String], limit: Int, daysAgo: Int, startDate: String, endDate: String, minRelevance: Float, summaryOnly: Boolean, previewLength: Int): [Memory!]!
+    memory(hash: String!): Memory
+    related(hash: String!, limit: Int): [Memory!]!
+    stats: Stats!
+  }
+
+  Mutation {
+    store(content: String!, tags: [String]): StoreResult!
+    update(hash: String!, content: String!, tags: [String]): UpdateResult!
+    delete(hash: String, tag: String): DeleteResult!
+  }
+
+  Memory { hash, content, title, preview, tags, createdAt, relevance }
+  Stats { version, totalMemories, totalRelationships, dbSize, schemaVersion }
+
+EXAMPLES:
+  { memories(query: "typescript", summaryOnly: true) { hash title tags } }
+  { memories(daysAgo: 7) { hash title createdAt } }
+  { memories(startDate: "2025-01-01", endDate: "2025-01-31") { hash title } }
+  { memories(query: "bug", tags: ["urgent"], daysAgo: 3) { hash title } }
+  { memory(hash: "abc123...") { content tags } }
+  mutation { store(content: "Remember this", tags: ["note"]) { success hash } }
+  { search: memories(query: "mcp", limit: 3) { hash title }, recent: memories(limit: 5) { hash createdAt }, stats { totalMemories } }`
         },
         variables: {
           type: 'object',

@@ -50,11 +50,6 @@ export class ToolRegistry {
   hasTool(toolName: string): boolean {
     return this.tools.has(toolName);
   }
-
-  getCliMetadata(toolName: string) {
-    const tool = this.tools.get(toolName);
-    return tool?.cliMetadata;
-  }
 }
 
 // Export singleton instance

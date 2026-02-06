@@ -16,9 +16,10 @@
     "node": ">=18"
   },
   "scripts": {
-    "setup": "npm install && npm run build && npm link && npm run configure",
+    "setup": "npm install && npm run build && npm run configure",
     "configure": "node dist/index.js setup",
     "build": "tsc",
+    "build:dev": "tsc && npm link",
     "build:release": "node scripts/bump-version.js patch && tsc",
     "postbuild": "node -e \"if (process.platform !== 'win32') { require('child_process').execSync('chmod +x dist/index.js'); }\"",
     "version:patch": "node scripts/bump-version.js patch",
@@ -31,10 +32,7 @@
     "cli": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "npm run build && node dist/tests/graphql-comprehensive-test.js",
-    "test:perf": "npm run build && node dist/tests/performance-test.js",
-    "test:migration": "npm run build && node dist/tests/migration-test.js",
-    "test:export-import": "npm run build && node dist/tests/export-import-test.js",
-    "test:graphql-perf": "npm run build && node dist/tests/graphql-performance-test.js",
+    "test:all": "npm run build && node dist/tests/graphql-comprehensive-test.js && node dist/tests/export-import-test.js && node dist/tests/migration-test.js && node dist/tests/performance-test.js && node dist/tests/time-range-test.js && node dist/tests/backup-test.js",
     "benchmark": "npm run build && node dist/tests/performance-benchmark.js",
     "link": "npm run build && npm link",
     "unlink": "npm unlink -g"

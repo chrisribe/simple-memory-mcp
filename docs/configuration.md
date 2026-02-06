@@ -181,17 +181,37 @@ Run multiple instances for different contexts:
 
 ## HTTP Transport (Advanced)
 
-For Docker deployments, remote servers, or avoiding local Node.js path issues.
+Simple Memory supports MCP's Streamable HTTP transport as an alternative to stdio. This is useful for Docker deployments, remote servers, or multi-client setups.
+
+### Why HTTP Transport?
+
+| Scenario | Why HTTP Helps |
+|----------|----------------|
+| **Docker/containers** | No stdio routing complexity |
+| **Remote servers** | Access memory from anywhere on network |
+| **Multiple MCP clients** | Share one database across editors |
+| **Web UI integration** | Same server powers Memory Browser |
+| **Future-proofing** | MCP ecosystem trending toward HTTP transports |
 
 ### Start the HTTP Server
 
 ```bash
-# With default database
+# Default: localhost:3000
 simple-memory --http
 
-# With custom database and port
+# Custom port
+MCP_PORT=3001 simple-memory --http
+
+# Custom database and port
 MEMORY_DB=/path/to/memory.db MCP_PORT=3001 simple-memory --http
 ```
+
+### Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/mcp` | POST | MCP JSON-RPC protocol |
+| `/health` | GET | Health check (returns `{"status": "ok"}`) |
 
 ### Configure MCP Client
 
@@ -205,14 +225,39 @@ MEMORY_DB=/path/to/memory.db MCP_PORT=3001 simple-memory --http
 }
 ```
 
-### When to Use HTTP Transport
+### Architecture
 
-- 🐳 Running in Docker or remote server
-- 🖥️ Multiple MCP clients sharing one database
-- 🔧 Avoiding Node.js path configuration issues
-- 🌐 Exposing memory server to network (use with caution!)
+```
+┌─────────────────┐     HTTP      ┌─────────────────────┐
+│  MCP Client     │──────────────▶│  simple-memory      │
+│  (Claude, VS)   │    :3000/mcp  │  --http             │
+└─────────────────┘               │                     │
+                                  │  ┌───────────────┐  │
+┌─────────────────┐     HTTP      │  │  SQLite +     │  │
+│  Memory Browser │──────────────▶│  │  FTS5         │  │
+│  (web UI)       │    :3000/api  │  └───────────────┘  │
+└─────────────────┘               └─────────────────────┘
+```
 
-**Note:** HTTP transport requires manually starting the server before using MCP clients. For most local setups, the default stdio transport is simpler.
+### Security Considerations
+
+⚠️ The HTTP transport has **no authentication** by default. For network-exposed deployments:
+
+- Use a reverse proxy (nginx, Caddy) with auth
+- Bind to localhost only for local use
+- Add firewall rules for remote access
+- Consider VPN/tunnel for remote scenarios
+
+### When to Use stdio vs HTTP
+
+| Use stdio (default) | Use HTTP |
+|---------------------|----------|
+| Single user, local machine | Docker/containerized |
+| Simplest setup | Multiple clients sharing DB |
+| Most MCP clients | Remote/network access |
+| No manual server management | Web browser integration |
+
+**Note:** stdio transport is simpler for most local setups—MCP clients manage the lifecycle automatically.
 
 ---
 

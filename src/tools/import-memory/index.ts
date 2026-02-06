@@ -33,40 +33,7 @@ export const importMemoryTool: Tool = {
     }
   },
   handler: execute,
-  cliParser: parseCliArgs,
-  cliMetadata: {
-    options: [
-      {
-        name: '--input, -i',
-        description: 'Input JSON file path',
-        hasValue: true,
-        example: '--input memories.json'
-      },
-      {
-        name: '--skip-duplicates, -s',
-        description: 'Skip memories that already exist',
-        hasValue: false,
-        example: '--skip-duplicates'
-      },
-      {
-        name: '--preserve-timestamps',
-        description: 'Keep original creation timestamps',
-        hasValue: false,
-        example: '--preserve-timestamps'
-      },
-      {
-        name: '--dry-run',
-        description: 'Preview without importing',
-        hasValue: false,
-        example: '--dry-run'
-      }
-    ],
-    examples: [
-      'import-memory --input memories.json',
-      'import-memory --input backup.json --skip-duplicates',
-      'import-memory --input export.json --preserve-timestamps'
-    ]
-  }
+  cliParser: parseCliArgs
 };
 
 export default importMemoryTool;
