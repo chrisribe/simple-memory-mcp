@@ -7,8 +7,13 @@
   "bin": {
     "simple-memory": "./dist/index.js"
   },
+  "exports": {
+    ".": "./dist/index.js",
+    "./sdk": "./dist/sdk.js"
+  },
   "files": [
     "dist/**/*",
+    "examples/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -58,7 +63,10 @@
     "sqlite",
     "tags",
     "ai",
-    "llm"
+    "llm",
+    "sdk",
+    "api",
+    "database"
   ],
   "author": "chrisribe",
   "license": "MIT",
