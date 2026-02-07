@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 *.db*
+memory-export.json
+examples-memory.db
+advanced-example.db
+imported-memory.db
+python-example.db
+test-sdk.db

@@ -71,6 +71,7 @@ AI: → searches memories, finds your PostgreSQL + Prisma decision
 - 💾 **Automatic Backups** - Optional sync to OneDrive/Dropbox
 - 📦 **Zero Config** - Works out of the box
 - 🚀 **Fast** - Sub-millisecond queries, 2,000-10,000 ops/sec
+- 📚 **SDK Support** - Use as a library in Node.js and Python projects
 
 ---
 
@@ -159,6 +160,109 @@ simple-memory import-memory --input backup.json
 ```
 
 Run `simple-memory --help` for all options.
+
+---
+
+## 📦 SDK Usage
+
+Simple Memory can also be used as a library in your Node.js or Python applications.
+
+### Node.js / TypeScript
+
+Install the package and import the SDK:
+
+```bash
+npm install simple-memory-mcp
+```
+
+```javascript
+import { createMemoryClient } from 'simple-memory-mcp/sdk';
+
+// Create a client instance
+const client = createMemoryClient('./my-memory.db');
+
+// Store memories
+const hash = client.store('Important note', ['work', 'project']);
+
+// Search memories
+const results = client.search('important', ['work'], 10);
+
+// Update a memory
+const newHash = client.update(hash, 'Updated note', ['work', 'completed']);
+
+// Get related memories
+const related = client.getRelated(hash, 5);
+
+// Always close when done
+client.close();
+```
+
+**Full API:**
+- `store(content, tags?)` - Store a memory
+- `search(query?, tags?, limit?, daysAgo?, startDate?, endDate?, minRelevance?)` - Search memories
+- `getByHash(hash)` - Get a specific memory
+- `update(hash, newContent, newTags?)` - Update a memory
+- `delete(hash)` - Delete by hash
+- `deleteByTag(tag)` - Delete all with tag
+- `linkMemories(fromHash, toHash, relationshipType?)` - Create relationship
+- `getRelated(hash, limit?)` - Get related memories
+- `stats()` - Get database statistics
+- `exportMemories(filters?)` - Export to JSON
+- `importMemories(jsonData, options?)` - Import from JSON
+- `close()` - Close database connection
+
+### Python
+
+Use the CLI wrapper for simple integration:
+
+```python
+from subprocess import run
+import json
+
+def store_memory(content, tags=None):
+    cmd = ['simple-memory', 'store', '--content', content]
+    if tags:
+        cmd.extend(['--tags', ','.join(tags)])
+    result = run(cmd, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+def search_memories(query=None, tags=None, limit=10):
+    cmd = ['simple-memory', 'search', '--limit', str(limit)]
+    if query:
+        cmd.extend(['--query', query])
+    if tags:
+        cmd.extend(['--tags', ','.join(tags)])
+    result = run(cmd, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+# Usage
+store_memory('Important note', ['work', 'project'])
+results = search_memories(query='important', tags=['work'])
+```
+
+Or use the HTTP client for production applications:
+
+```python
+import requests
+
+# Start server: simple-memory --http --port 3000
+def search_memories(query):
+    payload = {
+        "name": "memory-graphql",
+        "arguments": {
+            "query": f'{{ memories(query: "{query}") {{ content tags }} }}'
+        }
+    }
+    response = requests.post('http://localhost:3000/tools', json=payload)
+    return response.json()
+```
+
+📖 **More examples:** See [examples/](examples/) for complete Node.js and Python examples including:
+- Basic CRUD operations
+- Advanced search with date filtering
+- Relationship graphs
+- Export/Import workflows
+- HTTP client integration
 
 ---
 
@@ -255,6 +359,7 @@ npm run test:migration # Migration tests
 | Guide | Description |
 |-------|-------------|
 | [Configuration](docs/configuration.md) | Full config reference, backups, cloud storage, HTTP transport |
+| [SDK Examples](examples/) | Node.js and Python integration examples |
 | [Examples](docs/examples.md) | Real-world scenarios, namespace patterns |
 | [Design Philosophy](docs/design-philosophy.md) | Trade-offs, BM25 relevance scoring |
 | [Performance](docs/performance.md) | Benchmarks and optimization details |
