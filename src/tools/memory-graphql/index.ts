@@ -5,51 +5,22 @@ import { parseCliArgs } from './cli-parser.js';
 export const memoryGraphqlTool: Tool = {
   definition: {
     name: 'memory-graphql',
-    description: `Execute GraphQL queries against the memory database. This single tool replaces multiple memory tools with a unified, flexible interface.
-
-🧠 PROACTIVE USAGE: Search memories at the START of conversations or when relevant topics arise to provide personalized, context-aware responses.
-
-💾 AUTO-CAPTURE: Use store mutation proactively to capture important information WITHOUT waiting for explicit requests.
-✓ Preferences, decisions, facts about people/projects, learnings, action items
-✗ Skip: greetings, temporary info, transactional exchanges
-🏷️ Include "auto" tag when auto-capturing. Store SILENTLY - don't announce saves.
-
-⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens
-• Use summaryOnly: true for search, then memory(hash) for full content
-• Request only fields you need (e.g., { hash title } not { hash content title tags createdAt })
-• Batch related queries to reduce round-trips`,
+    description: `GraphQL memory store. WORKFLOW: 1) Search: { memories(query:"term", summaryOnly:true) { hash title tags } } 2) Get full: { memory(hash:"abc") { content } }. MUTATIONS: mutation { store(content:"text", tags:["t1"]) }. Filter by tags/daysAgo. Auto-capture: tag "auto". Summaries ~20 tokens, full ~500-2000.`,
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: `GraphQL query or mutation to execute.
+          description: `GraphQL query/mutation.
 
-SCHEMA:
-  Query {
-    memories(query: String, tags: [String], limit: Int, daysAgo: Int, startDate: String, endDate: String, minRelevance: Float, summaryOnly: Boolean, previewLength: Int): [Memory!]!
-    memory(hash: String!): Memory
-    related(hash: String!, limit: Int): [Memory!]!
-    stats: Stats!
-  }
+Query: memories(query tags limit daysAgo summaryOnly) memory(hash) related(hash) stats
+Mutation: store(content tags) update(hash content tags) delete(hash|tag)
+Fields: hash content title preview tags createdAt relevance
 
-  Mutation {
-    store(content: String!, tags: [String]): StoreResult!
-    update(hash: String!, content: String!, tags: [String]): UpdateResult!
-    delete(hash: String, tag: String): DeleteResult!
-  }
-
-  Memory { hash, content, title, preview, tags, createdAt, relevance }
-  Stats { version, totalMemories, totalRelationships, dbSize, schemaVersion }
-
-EXAMPLES:
-  { memories(query: "typescript", summaryOnly: true) { hash title tags } }
-  { memories(daysAgo: 7) { hash title createdAt } }
-  { memories(startDate: "2025-01-01", endDate: "2025-01-31") { hash title } }
-  { memories(query: "bug", tags: ["urgent"], daysAgo: 3) { hash title } }
-  { memory(hash: "abc123...") { content tags } }
-  mutation { store(content: "Remember this", tags: ["note"]) { success hash } }
-  { search: memories(query: "mcp", limit: 3) { hash title }, recent: memories(limit: 5) { hash createdAt }, stats { totalMemories } }`
+Examples:
+{ memories(query:"project", summaryOnly:true) { hash title } }
+{ memory(hash:"abc") { content } }
+mutation { store(content:"Note", tags:["auto"]) { hash } }`
         },
         variables: {
           type: 'object',
