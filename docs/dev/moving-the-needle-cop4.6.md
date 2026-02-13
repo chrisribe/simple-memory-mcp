@@ -77,6 +77,32 @@ You already have the `relationships` table and `relationship_type` field. But it
 
 ---
 
+### Reality check: which suggestions stay simple?
+
+Re-grading the above suggestions against the project's own design principles:
+
+| Suggestion | Complexity cost | Stays simple? |
+|---|---|---|
+| **Fix the 6 code bugs** | Near zero — same codebase, same paradigm | Yes |
+| **Temporal decay in scoring** | Low — a few lines in the BM25 normalization math | Yes |
+| **Hybrid BM25 + embeddings** | Medium — one new dependency (ONNX runtime ~40MB), one new column, one function. Build-once, but permanent dependency for a "zero setup" tool. Would need opt-in (`MEMORY_EMBEDDINGS=true`) to not violate the philosophy. | Borderline |
+| **MCP resource for auto-surfacing** | Low — MCP SDK already supports it | Yes |
+| **Hierarchical summarization** | High — needs an LLM to generate summaries, triggers for when to summarize, parent/child memory model. **This is a second system.** | No |
+| **Entity extraction + knowledge graph** | Very high — NLP pipeline, schema redesign, graph query language. **This is a different product.** | No |
+
+**What to actually do:**
+
+1. Fix the code bugs (N+1 tags, SQL-level date filtering, multi-tag search). Pure improvement, zero new complexity.
+2. Add temporal decay to BM25 scoring. ~10 lines of math. Timestamps already exist.
+3. Add `access_count` / `last_accessed` columns (one migration). Feed into scoring. Still SQLite, still simple.
+4. Stop there for retrieval.
+
+Items 3 and 5 from the "move the needle" list (hierarchical summarization, knowledge graph) sound compelling in a strategy doc and then eat 3 months while the actual tool rots. The design doc says "if you need semantic similarity, use a vector database instead." That's a boundary worth respecting.
+
+The instinct to resist complexity is more valuable than clever suggestions to add it. The review over-prescribed on items 3-5.
+
+---
+
 ### The honest strategic take
 
 Your project sits at an interesting intersection:
