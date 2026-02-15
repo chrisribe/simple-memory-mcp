@@ -193,15 +193,15 @@ export class MemoryService {
     // This is where all the magic happens - automatic, tracked, safe
     runMigrations(this.db, this.dbPath);
     
+    // Prepare statements for better performance (before any usage below)
+    this.prepareStatements();
+
     // Optimize FTS after migrations (only if there are indexed rows)
     // Running optimize on an empty external content FTS5 table can corrupt the index
-    const memCount = (this.db.prepare('SELECT COUNT(*) as count FROM memories').get() as any).count;
+    const memCount = (this.stmts.getStats.get() as any).count;
     if (memCount > 0) {
       DatabaseOptimizer.optimizeFTS(this.db);
     }
-
-    // Prepare statements for better performance
-    this.prepareStatements();
 
     debugLog('MemoryService: Database initialized successfully');
   }
@@ -221,6 +221,8 @@ export class MemoryService {
       `),
       getRecent: this.db!.prepare(`
         SELECT * FROM memories 
+        WHERE created_at >= COALESCE(?, created_at)
+          AND created_at <= COALESCE(?, created_at)
         ORDER BY created_at DESC
         LIMIT ?
       `),
@@ -248,6 +250,21 @@ export class MemoryService {
         FROM memories m
         INNER JOIN tags t ON m.id = t.memory_id
         WHERE t.tag = ?
+          AND m.created_at >= COALESCE(?, m.created_at)
+          AND m.created_at <= COALESCE(?, m.created_at)
+        ORDER BY m.created_at DESC
+        LIMIT ?
+      `),
+      // Multi-tag intersection search (finds memories matching ALL tags)
+      searchByTags: this.db!.prepare(`
+        SELECT m.*
+        FROM memories m
+        INNER JOIN tags t ON m.id = t.memory_id
+        WHERE t.tag IN (SELECT value FROM json_each(?))
+          AND m.created_at >= COALESCE(?, m.created_at)
+          AND m.created_at <= COALESCE(?, m.created_at)
+        GROUP BY m.id
+        HAVING COUNT(DISTINCT t.tag) = ?
         ORDER BY m.created_at DESC
         LIMIT ?
       `),
@@ -256,21 +273,15 @@ export class MemoryService {
         WHERE id IN (SELECT memory_id FROM tags WHERE tag = ?)
       `),
       
-      // FTS search with BM25 ranking for relevance scoring
+      // FTS search with BM25 ranking and optional date bounds
       searchText: this.db!.prepare(`
         SELECT m.*, bm25(memories_fts) as rank
         FROM memories m
         JOIN memories_fts fts ON m.id = fts.rowid
         WHERE memories_fts MATCH ?
+          AND m.created_at >= COALESCE(?, m.created_at)
+          AND m.created_at <= COALESCE(?, m.created_at)
         ORDER BY rank, m.created_at DESC
-        LIMIT ?
-      `),
-      
-      // Legacy tag search (no longer used after migration 2)
-      searchTagsLegacy: this.db!.prepare(`
-        SELECT * FROM memories 
-        WHERE 1=0
-        ORDER BY created_at DESC
         LIMIT ?
       `),
       
@@ -288,12 +299,45 @@ export class MemoryService {
         LIMIT ?
       `),
       
+      // Batch tag hydration (single query for N memory IDs via json_each)
+      getTagsForMemoryIds: this.db!.prepare(`
+        SELECT memory_id, tag FROM tags
+        WHERE memory_id IN (SELECT value FROM json_each(?))
+        ORDER BY tag
+      `),
+      
+      // Hash corruption fallback queries (intentionally bypass index with +hash)
+      getMemoryByHashFullScan: this.db!.prepare(`
+        SELECT * FROM memories WHERE +hash = ?
+      `),
+      deleteById: this.db!.prepare(`
+        DELETE FROM memories WHERE id = ?
+      `),
+      
+      // Export/import relationship queries
+      getRelationshipsForExport: this.db!.prepare(`
+        SELECT 
+          r.to_memory_id as relatedMemoryId,
+          r.relationship_type as relationshipType,
+          m.hash as relatedMemoryHash
+        FROM relationships r
+        JOIN memories m ON m.id = r.to_memory_id
+        WHERE r.from_memory_id = ?
+      `),
+      insertRelationshipIgnore: this.db!.prepare(`
+        INSERT OR IGNORE INTO relationships (from_memory_id, to_memory_id, relationship_type, created_at)
+        VALUES (?, ?, ?, ?)
+      `),
+      
       // Stats
       getStats: this.db!.prepare(`
         SELECT COUNT(*) as count FROM memories
       `),
       getRelationshipStats: this.db!.prepare(`
         SELECT COUNT(*) as count FROM relationships
+      `),
+      getSchemaVersion: this.db!.prepare(`
+        SELECT MAX(version) as version FROM schema_migrations
       `)
     };
   }
@@ -370,7 +414,33 @@ export class MemoryService {
   }
 
   /**
+   * Batch-fetch tags for multiple memory IDs in a single query (fixes N+1)
+   * Uses the prepared getTagsForMemoryIds statement with json_each
+   */
+  private getTagsForMemories(ids: number[]): Map<number, string[]> {
+    if (ids.length === 0) return new Map();
+
+    const tagMap = new Map<number, string[]>();
+    for (const id of ids) {
+      tagMap.set(id, []);
+    }
+
+    const rows = this.stmts.getTagsForMemoryIds.all(
+      JSON.stringify(ids)
+    ) as Array<{ memory_id: number; tag: string }>;
+
+    for (const row of rows) {
+      tagMap.get(row.memory_id)!.push(row.tag);
+    }
+
+    return tagMap;
+  }
+
+  /**
    * Search memories by content or tags
+   * - Date filtering pushed into SQL (not post-fetch JavaScript)
+   * - Multi-tag search uses intersection (AND) logic
+   * - Batch tag hydration eliminates N+1 queries
    */
   search(
     query?: string, 
@@ -381,65 +451,63 @@ export class MemoryService {
     endDate?: string,
     minRelevance?: number
   ): MemoryEntry[] {
-    let results: any[];
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
 
-    // Calculate date boundaries for filtering
-    let minDate: Date | undefined;
-    let maxDate: Date | undefined;
+    // Calculate date boundaries as ISO strings for SQL filtering
+    let minDateStr: string | undefined;
+    let maxDateStr: string | undefined;
     
     if (daysAgo !== undefined && daysAgo >= 0) {
-      // Convert daysAgo to a start date (N days ago from now)
-      // Use UTC to match how SQLite stores timestamps
       const now = new Date();
-      minDate = new Date(Date.UTC(
+      const minDate = new Date(Date.UTC(
         now.getUTCFullYear(),
         now.getUTCMonth(),
         now.getUTCDate() - daysAgo,
-        0, 0, 0, 0  // Start of day in UTC
+        0, 0, 0, 0
       ));
+      minDateStr = minDate.toISOString();
     }
     
     if (startDate) {
-      // Parse start date (supports both YYYY-MM-DD and full ISO strings)
       const parsed = new Date(startDate);
       if (!isNaN(parsed.getTime())) {
-        minDate = parsed;
+        minDateStr = parsed.toISOString();
       }
     }
     
     if (endDate) {
-      // Parse end date (supports both YYYY-MM-DD and full ISO strings)
       const parsed = new Date(endDate);
       if (!isNaN(parsed.getTime())) {
-        maxDate = parsed;
-        // Set to end of day if only date provided (no time component)
         if (endDate.length === 10) { // YYYY-MM-DD format
-          maxDate.setHours(23, 59, 59, 999);
+          parsed.setHours(23, 59, 59, 999);
         }
+        maxDateStr = parsed.toISOString();
       }
     }
 
+    let results: any[];
+
     if (query) {
-      // Use FTS for text search
-      let ftsResults: any[];
       // Tokenize query into words and join with OR for flexible matching
-      // This allows: "git reset" to match memories with either "git" OR "reset"
       const words = query
         .split(/\s+/)
         .map(word => word.trim())
         .filter(word => word.length > 0)
-        .map(word => `"${word.replace(/"/g, '""')}"`); // Quote each word for exact word matching
+        .map(word => `"${word.replace(/"/g, '""')}"`);
       
       const escapedQuery = words.length > 0 ? words.join(' OR ') : query.replace(/"/g, '""');
       
-      // Fetch more results initially if we need to filter by tags or relevance
-      const fetchLimit = (tags && tags.length > 0) || minRelevance !== undefined ? limit * 5 : limit * 2;
-      ftsResults = this.stmts.searchText.all(escapedQuery, fetchLimit);
+      // Fetch more if we need to post-filter by tags or relevance
+      const fetchLimit = (tags && tags.length > 0) || minRelevance !== undefined ? limit * 5 : limit;
       
-      // Always compute relevance scores for keyword searches
+      let ftsResults = this.stmts.searchText.all(
+        escapedQuery, minDateStr ?? null, maxDateStr ?? null, fetchLimit
+      ) as any[];
+      
+      // Normalize BM25 scores to 0-1 range
       if (ftsResults.length > 0) {
-        // BM25 returns negative scores (more negative = better match)
-        // Normalize to 0-1 range where 1 is best match, 0 is worst
         const scores = ftsResults.map(r => Math.abs(r.rank));
         const maxScore = Math.max(...scores);
         const minScore = Math.min(...scores);
@@ -451,65 +519,54 @@ export class MemoryService {
           return row;
         });
         
-        // Filter by relevance threshold if provided
         if (minRelevance !== undefined) {
           ftsResults = ftsResults.filter((row: any) => row.relevance >= minRelevance);
         }
       }
       
-      // Hydrate with tags from tags table
-      results = ftsResults.map((row: any) => {
-        const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
-        return {
-          ...row,
-          tags: tagRows.map(t => t.tag)
-        };
-      });
+      results = ftsResults;
     } else if (tags && tags.length > 0) {
-      // Fast indexed tag search using normalized tags table
-      const normalizedTag = tags[0].trim().toLowerCase();
-      const tagResults = this.stmts.searchByTag.all(normalizedTag, limit * 2); // Fetch more to allow for filtering
+      // Multi-tag intersection search — finds memories matching ALL tags
+      const normalizedTags = tags.map(t => t.trim().toLowerCase()).filter(t => t);
       
-      // Hydrate with all tags for each memory
-      results = tagResults.map((row: any) => {
-        const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
-        return {
-          ...row,
-          tags: tagRows.map(t => t.tag)
-        };
-      });
+      if (normalizedTags.length === 1) {
+        // Optimized single-tag path
+        results = this.stmts.searchByTag.all(
+          normalizedTags[0], minDateStr ?? null, maxDateStr ?? null, limit
+        ) as any[];
+      } else {
+        // Multi-tag intersection via json_each
+        results = this.stmts.searchByTags.all(
+          JSON.stringify(normalizedTags), minDateStr ?? null, maxDateStr ?? null,
+          normalizedTags.length, limit
+        ) as any[];
+      }
     } else {
-      // Get recent memories
-      const recentResults = this.stmts.getRecent.all(limit * 2); // Fetch more to allow for filtering
-      
-      // Hydrate with tags
-      results = recentResults.map((row: any) => {
-        const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
-        return {
-          ...row,
-          tags: tagRows.map(t => t.tag)
-        };
-      });
+      // Get recent memories (date bounds handled by COALESCE in prepared stmt)
+      results = this.stmts.getRecent.all(
+        minDateStr ?? null, maxDateStr ?? null, limit
+      ) as any[];
     }
 
-    // Apply date filtering if needed
-    if (minDate || maxDate) {
-      results = results.filter((row: any) => {
-        const createdAt = new Date(row.created_at);
-        if (minDate && createdAt < minDate) return false;
-        if (maxDate && createdAt > maxDate) return false;
-        return true;
-      });
-    }
+    // Batch tag hydration — single query instead of N+1
+    const ids = results.map(r => r.id);
+    const tagMap = this.getTagsForMemories(ids);
 
-    // Apply limit after filtering
-    results = results.slice(0, limit);
+    // If FTS search + tag filter, apply tag intersection post-hydration
+    if (query && tags && tags.length > 0) {
+      const normalizedFilterTags = tags.map(t => t.trim().toLowerCase());
+      results = results.filter(row => {
+        const memTags = tagMap.get(row.id) || [];
+        return normalizedFilterTags.every(ft => memTags.includes(ft));
+      });
+      results = results.slice(0, limit);
+    }
 
     // Convert to MemoryEntry format
     const memories = results.map(row => ({
       id: row.id,
       content: row.content,
-      tags: row.tags || [],
+      tags: tagMap.get(row.id) || [],
       createdAt: row.created_at,
       ...(row.updated_at && { updatedAt: row.updated_at }),
       hash: row.hash,
@@ -528,10 +585,10 @@ export class MemoryService {
     let deleted = result.changes > 0;
     
     // Fallback: If hash lookup failed, force full table scan (bypasses corrupted index)
-    // The + prefix tells SQLite to not use the index on hash column
+    // The +hash prefix tells SQLite to not use the index on hash column
     if (!deleted && this.db) {
       debugLogHash('MemoryService: Hash lookup failed, trying fallback full table scan for:', hash);
-      const orphaned = this.db.prepare('SELECT id FROM memories WHERE +hash = ?').get(hash) as any;
+      const orphaned = this.stmts.getMemoryByHashFullScan.get(hash) as any;
       
       if (orphaned) {
         // DIAGNOSTIC: This indicates hash index corruption - log details for investigation
@@ -542,7 +599,7 @@ export class MemoryService {
         console.error('Please report this with the hash and operation that preceded it.');
         
         debugLog('MemoryService: Found orphaned memory with corrupted hash index, deleting by ID:', orphaned.id);
-        const fallbackResult = this.db.prepare('DELETE FROM memories WHERE id = ?').run(orphaned.id);
+        const fallbackResult = this.stmts.deleteById.run(orphaned.id);
         deleted = fallbackResult.changes > 0;
       }
     }
@@ -665,19 +722,19 @@ export class MemoryService {
 
     const results = this.stmts.getRelated.all(memory.id, memory.id, memory.id, limit) as any[];
     
-    const related = results.map((row: any) => {
-      // Hydrate tags from tags table
-      const tagRows = this.stmts.getTagsForMemory.all(row.id) as Array<{ tag: string }>;
-      return {
-        id: row.id,
-        content: row.content,
-        tags: tagRows.map(t => t.tag),
-        createdAt: row.created_at,
-        ...(row.updated_at && { updatedAt: row.updated_at }),
-        hash: row.hash,
-        relationshipType: row.relationship_type
-      };
-    });
+    // Batch tag hydration instead of N+1
+    const ids = results.map(r => r.id);
+    const tagMap = this.getTagsForMemories(ids);
+    
+    const related = results.map((row: any) => ({
+      id: row.id,
+      content: row.content,
+      tags: tagMap.get(row.id) || [],
+      createdAt: row.created_at,
+      ...(row.updated_at && { updatedAt: row.updated_at }),
+      hash: row.hash,
+      relationshipType: row.relationship_type
+    }));
 
     debugLog('MemoryService: Found', related.length, 'related memories');
     return related;
@@ -695,9 +752,7 @@ export class MemoryService {
     const relationshipCount = this.stmts.getRelationshipStats.get() as any;
     
     // Get current schema version from migrations table
-    const versionResult = this.db.prepare(
-      'SELECT MAX(version) as version FROM schema_migrations'
-    ).get() as any;
+    const versionResult = this.stmts.getSchemaVersion.get() as any;
     const schemaVersion = versionResult?.version || 0;
     
     // Get backup config from unified config system
@@ -762,10 +817,10 @@ export class MemoryService {
     let existing = this.stmts.getMemoryByHash.get(hash) as any;
     
     // Fallback: If hash lookup failed, force full table scan (bypasses corrupted index)
-    // The + prefix tells SQLite to not use the index on hash column
+    // The +hash prefix tells SQLite to not use the index on hash column
     if (!existing) {
       debugLogHash('MemoryService: Hash lookup failed, trying fallback full table scan for:', hash);
-      existing = this.db.prepare('SELECT * FROM memories WHERE +hash = ?').get(hash) as any;
+      existing = this.stmts.getMemoryByHashFullScan.get(hash) as any;
       
       if (existing) {
         // DIAGNOSTIC: This indicates hash index corruption - log details for investigation
@@ -1011,17 +1066,7 @@ export class MemoryService {
   }> {
     if (!this.db) return [];
 
-    const stmt = this.db.prepare(`
-      SELECT 
-        r.to_memory_id as relatedMemoryId,
-        r.relationship_type as relationshipType,
-        m.hash as relatedMemoryHash
-      FROM relationships r
-      JOIN memories m ON m.id = r.to_memory_id
-      WHERE r.from_memory_id = ?
-    `);
-
-    const relationships = stmt.all(memoryId) as any[];
+    const relationships = this.stmts.getRelationshipsForExport.all(memoryId) as any[];
     
     return relationships.map(rel => ({
       relatedMemoryHash: rel.relatedMemoryHash,
@@ -1051,13 +1096,9 @@ export class MemoryService {
         if (!toMemory) continue;
 
         try {
-          // Create relationship
-          const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO relationships (from_memory_id, to_memory_id, relationship_type, created_at)
-            VALUES (?, ?, ?, ?)
-          `);
-          
-          const info = stmt.run(fromMemory.id, toMemory.id, rel.relationshipType, new Date().toISOString());
+          const info = this.stmts.insertRelationshipIgnore.run(
+            fromMemory.id, toMemory.id, rel.relationshipType, new Date().toISOString()
+          );
           if (info.changes > 0) {
             restoredCount++;
           }
@@ -1073,20 +1114,14 @@ export class MemoryService {
   }
 
   /**
-   * Get a memory by its hash
+   * Get a memory by its hash (uses prepared statement, not a new one each call)
    */
   private getMemoryByHash(hash: string): MemoryEntry | null {
     if (!this.db) return null;
 
-    const stmt = this.db.prepare(`
-      SELECT * FROM memories WHERE hash = ?
-    `);
-
-    const result = stmt.get(hash) as any;
-    
+    const result = this.stmts.getMemoryByHash.get(hash) as any;
     if (!result) return null;
 
-    // Hydrate with tags from tags table
     const tagRows = this.stmts.getTagsForMemory.all(result.id) as Array<{ tag: string }>;
 
     return {
