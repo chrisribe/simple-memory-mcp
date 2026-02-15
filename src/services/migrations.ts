@@ -273,8 +273,20 @@ export const migrations: Migration[] = [
       
       debugLog('Migration 7: FTS triggers fixed and index rebuilt successfully');
     }
-  }
+  },
   // Future migrations go here - just add to the array!
+  {
+    version: 8,
+    description: 'Add access tracking columns for temporal relevance scoring',
+    up: (db: Database.Database) => {
+      debugLog('Migration 8: Adding access tracking columns');
+      
+      db.exec(`ALTER TABLE memories ADD COLUMN access_count INTEGER DEFAULT 0`);
+      db.exec(`ALTER TABLE memories ADD COLUMN last_accessed TEXT`);
+      
+      debugLog('Migration 8: Access tracking columns added successfully');
+    }
+  }
 ];
 
 /**

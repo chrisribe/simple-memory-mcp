@@ -119,7 +119,9 @@ export class MemoryService {
         content TEXT NOT NULL,
         created_at TEXT,
         hash TEXT UNIQUE,
-        updated_at TEXT
+        updated_at TEXT,
+        access_count INTEGER DEFAULT 0,
+        last_accessed TEXT
       )
     `);
 
@@ -338,6 +340,11 @@ export class MemoryService {
       `),
       getSchemaVersion: this.db!.prepare(`
         SELECT MAX(version) as version FROM schema_migrations
+      `),
+      
+      // Access tracking
+      incrementAccess: this.db!.prepare(`
+        UPDATE memories SET access_count = COALESCE(access_count, 0) + 1, last_accessed = ? WHERE id = ?
       `)
     };
   }
@@ -506,18 +513,40 @@ export class MemoryService {
         escapedQuery, minDateStr ?? null, maxDateStr ?? null, fetchLimit
       ) as any[];
       
-      // Normalize BM25 scores to 0-1 range
+      // Normalize BM25 scores to 0-1 range, then apply temporal decay + access boost
       if (ftsResults.length > 0) {
         const scores = ftsResults.map(r => Math.abs(r.rank));
         const maxScore = Math.max(...scores);
         const minScore = Math.min(...scores);
         const range = maxScore - minScore || 1;
         
+        const now = Date.now();
+        // Half-life of 90 days: memories lose 50% recency boost after 90 days
+        const DECAY_LAMBDA = Math.LN2 / 90;
+        const DECAY_WEIGHT = 0.2;   // recency is 20% of final score
+        const ACCESS_WEIGHT = 0.1;  // access frequency is 10% of final score
+        
         ftsResults = ftsResults.map((row: any) => {
-          const normalizedScore = 1 - ((Math.abs(row.rank) - minScore) / range);
-          row.relevance = normalizedScore;
+          // BM25 normalized (0-1)
+          const bm25 = 1 - ((Math.abs(row.rank) - minScore) / range);
+          
+          // Temporal decay: exponential decay based on age
+          const timestamp = row.updated_at || row.created_at;
+          const ageDays = Math.max(0, (now - new Date(timestamp).getTime()) / 86_400_000);
+          const recency = Math.exp(-DECAY_LAMBDA * ageDays);
+          
+          // Access boost: diminishing returns via log
+          const accessBoost = Math.log1p(row.access_count || 0) / Math.log1p(100); // normalized ~0-1
+          
+          // Weighted combination: BM25 dominates, recency and access are tiebreakers
+          row.relevance = (1 - DECAY_WEIGHT - ACCESS_WEIGHT) * bm25
+                        + DECAY_WEIGHT * recency
+                        + ACCESS_WEIGHT * Math.min(1, accessBoost);
           return row;
         });
+        
+        // Re-sort by combined relevance score (descending)
+        ftsResults.sort((a: any, b: any) => b.relevance - a.relevance);
         
         if (minRelevance !== undefined) {
           ftsResults = ftsResults.filter((row: any) => row.relevance >= minRelevance);
@@ -884,13 +913,16 @@ export class MemoryService {
   }
 
   /**
-   * Get memory by hash
+   * Get memory by hash (and track access)
    */
   getByHash(hash: string): MemoryEntry | null {
     const result = this.stmts.getMemoryByHash.get(hash) as any;
     if (!result) {
       return null;
     }
+
+    // Track access
+    this.stmts.incrementAccess.run(new Date().toISOString(), result.id);
 
     // Hydrate with tags from tags table
     const tagRows = this.stmts.getTagsForMemory.all(result.id) as Array<{ tag: string }>;
