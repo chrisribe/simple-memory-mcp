@@ -5,7 +5,7 @@ import { parseCliArgs } from './cli-parser.js';
 export const memoryGraphqlTool: Tool = {
   definition: {
     name: 'memory-graphql',
-    description: `GraphQL memory store. WORKFLOW: 1) Search: { memories(query:"term", summaryOnly:true) { hash title tags } } 2) Get full: { memory(hash:"abc") { content } }. MUTATIONS: mutation { store(content:"text", tags:["t1"]) }. Filter by tags/daysAgo. Auto-capture: tag "auto". Summaries ~20 tokens, full ~500-2000.`,
+    description: `GraphQL memory store. WORKFLOW: 1) Search: { memories(query:"term", summaryOnly:true) { hash title tags } } 2) Get full: { memory(hash:"abc") { content } }. MUTATIONS: mutation { store(content:"text", tags:["t1"]) { hash } }. Filter by tags/daysAgo. Auto-capture: tag "auto". Summaries ~20 tokens, full ~500-2000.`,
     inputSchema: {
       type: 'object',
       properties: {

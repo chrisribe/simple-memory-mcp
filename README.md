@@ -177,6 +177,10 @@ The AI uses these tools automatically - you don't need to call them directly.
 
 ```graphql
 type Memory { hash, content, title, preview, tags, createdAt, relevance }
+type StoreResult { success, hash, error }
+type UpdateResult { success, newHash, error }
+type DeleteResult { success, deletedCount, error }
+
 type Query {
   memories(query: String, tags: [String], limit: Int): [Memory!]!
   memory(hash: String!): Memory
@@ -189,6 +193,8 @@ type Mutation {
   delete(hash: String, tag: String): DeleteResult!
 }
 ```
+
+**Note**: Mutation results return minimal data (hash/success). To get full memory fields (title, tags, createdAt), query: `{ memory(hash: "...") { ... } }`
 
 </details>
 

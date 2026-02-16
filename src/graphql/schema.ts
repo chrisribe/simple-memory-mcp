@@ -130,7 +130,11 @@ const DeleteResultType = `#graphql
 `;
 
 const StoreResultType = `#graphql
-  """Result of a store operation"""
+  """
+  Result of a store operation.
+  NOTE: Only returns success, hash, and error - not full memory fields.
+  To get full memory data (title, tags, createdAt, etc.), use: { memory(hash: "...") { ... } }
+  """
   type StoreResult {
     """Whether the operation succeeded"""
     success: Boolean!
@@ -144,7 +148,11 @@ const StoreResultType = `#graphql
 `;
 
 const UpdateResultType = `#graphql
-  """Result of an update operation"""
+  """
+  Result of an update operation.
+  NOTE: Only returns success, newHash, and error - not full memory fields.
+  To get full memory data, use: { memory(hash: "...") { ... } }
+  """
   type UpdateResult {
     """Whether the operation succeeded"""
     success: Boolean!
