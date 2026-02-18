@@ -7,8 +7,10 @@ export const memoryGraphqlTool: Tool = {
     name: 'memory-graphql',
     description: `GraphQL endpoint for simple-memory.
 
+⚠️ TOKEN COST: Full content = 500-2000 tokens/memory, summaries = ~20 tokens. ALWAYS use summaryOnly:true on first search, then fetch full content by hash only when needed.
+
 QUERIES:
-{ memories(tags: ["tag"]) { hash title content tags createdAt } }
+{ memories(query: "search term", summaryOnly: true) { hash title tags } }
 { memory(hash: "abc123") { hash title content tags createdAt } }
 
 MUTATIONS - all return { hash }:
