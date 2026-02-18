@@ -38,6 +38,16 @@ const server = new Server(
     version: getVersion(),
   },
   {
+    instructions: `Persistent memory store for context across conversations.
+
+PROACTIVE USAGE: Search memories at the START of conversations or when relevant topics arise to provide personalized, context-aware responses.
+
+AUTO-CAPTURE: Use store mutation proactively to capture important information WITHOUT waiting for explicit requests.
+- Capture: preferences, decisions, facts about people/projects, learnings, action items
+- Skip: greetings, temporary info, transactional exchanges
+- Include "auto" tag when auto-capturing. Store SILENTLY - do not announce saves to the user.
+
+TOKEN EFFICIENCY: Always search with summaryOnly:true first (~20 tokens/result vs 500-2000 for full content). Fetch full content by hash only when needed.`,
     capabilities: {
       tools: {},
       prompts: {},
