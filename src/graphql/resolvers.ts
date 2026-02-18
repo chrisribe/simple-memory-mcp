@@ -90,9 +90,9 @@ export function createResolvers(memoryService: MemoryService) {
 
       update: (_: any, args: { hash: string; content: string; tags?: string[] }) => {
         try {
-          const newHash = memoryService.update(args.hash, args.content, args.tags);
-          if (newHash) {
-            return { success: true, newHash };
+          const hash = memoryService.update(args.hash, args.content, args.tags);
+          if (hash) {
+            return { success: true, hash };
           }
           return { success: false, error: `Memory not found: ${args.hash}` };
         } catch (error: any) {
@@ -103,26 +103,26 @@ export function createResolvers(memoryService: MemoryService) {
       delete: (_: any, args: { hash?: string; tag?: string }) => {
         try {
           if (!args.hash && !args.tag) {
-            return { success: false, deletedCount: 0, error: 'Either hash or tag must be provided' };
+            return { success: false, hash: null, deletedCount: 0, error: 'Either hash or tag must be provided' };
           }
           
           if (args.hash && args.tag) {
-            return { success: false, deletedCount: 0, error: 'Provide either hash or tag, not both' };
+            return { success: false, hash: null, deletedCount: 0, error: 'Provide either hash or tag, not both' };
           }
           
           if (args.hash) {
             const deleted = memoryService.delete(args.hash);
-            return { success: true, deletedCount: deleted ? 1 : 0 };
+            return { success: true, hash: deleted ? args.hash : null, deletedCount: deleted ? 1 : 0 };
           }
           
           if (args.tag) {
             const count = memoryService.deleteByTag(args.tag);
-            return { success: true, deletedCount: count };
+            return { success: true, hash: null, deletedCount: count };
           }
           
-          return { success: false, deletedCount: 0 };
+          return { success: false, hash: null, deletedCount: 0 };
         } catch (error: any) {
-          return { success: false, deletedCount: 0, error: error.message };
+          return { success: false, hash: null, deletedCount: 0, error: error.message };
         }
       }
     }

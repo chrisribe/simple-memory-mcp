@@ -121,6 +121,9 @@ const DeleteResultType = `#graphql
     """Whether the operation succeeded"""
     success: Boolean!
 
+    """Hash of deleted memory (null if deleted by tag)"""
+    hash: String
+
     """Number of memories deleted"""
     deletedCount: Int!
 
@@ -150,15 +153,15 @@ const StoreResultType = `#graphql
 const UpdateResultType = `#graphql
   """
   Result of an update operation.
-  NOTE: Only returns success, newHash, and error - not full memory fields.
+  NOTE: Only returns success, hash, and error - not full memory fields.
   To get full memory data, use: { memory(hash: "...") { ... } }
   """
   type UpdateResult {
     """Whether the operation succeeded"""
     success: Boolean!
 
-    """New hash after update (content hash changes)"""
-    newHash: String
+    """Hash of updated memory (content hash changes)"""
+    hash: String
 
     """Error message if operation failed"""
     error: String
