@@ -122,7 +122,7 @@ export const COMMANDS: Record<string, CommandDefinition> = {
         throw new Error('--content is required');
       }
       const tagsArg = args.tags ? `, tags: [${tagsToGraphQL(args.tags)}]` : '';
-      return `mutation { update(hash: "${args.hash}", content: "${escapeGraphQL(args.content)}"${tagsArg}) { success newHash } }`;
+      return `mutation { update(hash: "${args.hash}", content: "${escapeGraphQL(args.content)}"${tagsArg}) { success hash } }`;
     },
   },
 
@@ -174,7 +174,7 @@ export const COMMANDS: Record<string, CommandDefinition> = {
     notes: ['Provide either --hash OR --tag, not both'],
     buildQuery: (args) => {
       if (args.hash) {
-        return `mutation { delete(hash: "${args.hash}") { success deletedCount } }`;
+        return `mutation { delete(hash: "${args.hash}") { success hash } }`;
       } else if (args.tag) {
         return `mutation { delete(tag: "${args.tag}") { success deletedCount } }`;
       }

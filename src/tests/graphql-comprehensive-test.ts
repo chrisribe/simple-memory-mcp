@@ -152,7 +152,7 @@ async function testUpdateMutation(hash: string): Promise<string> {
     query: `mutation {
       update(hash: "${hash}", content: "Updated content for GraphQL test", tags: ["test", "graphql", "updated"]) {
         success
-        newHash
+        hash
         error
       }
     }`
@@ -162,8 +162,8 @@ async function testUpdateMutation(hash: string): Promise<string> {
   if (!result.data?.update?.success) {
     throw new Error(`Update failed: ${result.data?.update?.error || 'unknown'}`);
   }
-  if (!result.data?.update?.newHash) {
-    throw new Error('Update should return newHash');
+  if (!result.data?.update?.hash) {
+    throw new Error('Update should return hash');
   }
   
   // Verify old hash no longer exists
@@ -175,8 +175,8 @@ async function testUpdateMutation(hash: string): Promise<string> {
     throw new Error('Old hash should no longer exist after update');
   }
   
-  console.log(`  ✓ Updated memory, new hash: ${result.data.update.newHash.slice(0, 8)}...`);
-  return result.data.update.newHash;
+  console.log(`  ✓ Updated memory, new hash: ${result.data.update.hash.slice(0, 8)}...`);
+  return result.data.update.hash;
 }
 
 async function testDeleteMutation(hash: string) {
@@ -184,7 +184,7 @@ async function testDeleteMutation(hash: string) {
     query: `mutation {
       delete(hash: "${hash}") {
         success
-        deletedCount
+        hash
         error
       }
     }`
@@ -194,8 +194,8 @@ async function testDeleteMutation(hash: string) {
   if (!result.data?.delete?.success) {
     throw new Error(`Delete failed: ${result.data?.delete?.error || 'unknown'}`);
   }
-  if (result.data?.delete?.deletedCount !== 1) {
-    throw new Error('Should delete exactly 1 memory');
+  if (result.data?.delete?.hash !== hash) {
+    throw new Error('Should return the deleted hash');
   }
   
   // Verify deletion

@@ -7,28 +7,16 @@ export const memoryGraphqlTool: Tool = {
     name: 'memory-graphql',
     description: `GraphQL endpoint for simple-memory.
 
-Common operations
-Query memories:
+QUERIES:
 { memories(tags: ["tag"]) { hash title content tags createdAt } }
 { memory(hash: "abc123") { hash title content tags createdAt } }
 
-Store (create) memory:
-mutation { store(content: "...", tags: ["tag1", "tag2"]) { hash } }
-Note: Only returns { hash } - title/tags are NOT returned
+MUTATIONS - all return { hash }:
+mutation { store(content: "...", tags: ["a"]) { hash } }
+mutation { update(hash: "abc", content: "...") { hash } }
+mutation { delete(hash: "abc") { hash } }
 
-Update memory:
-mutation { update(hash: "abc123", content: "...", tags: ["..."]) { newHash } }
-
-Delete memory:
-mutation { delete(hash: "abc123") { deletedCount } }
-mutation { delete(tag: "tagname") { deletedCount } }
-
-Key constraints:
-- store/update mutations only return result fields (hash/newHash/success/error), not Memory fields
-- First line of content becomes the title (auto-generated)
-- Use "auto" tag for auto-generated memories
-
-Workflow: 1) Search: { memories(query:"term", summaryOnly:true) { hash title tags } } 2) Get full: { memory(hash:"abc") { content } }. Filter by tags/daysAgo. Summaries ~20 tokens, full ~500-2000.`,
+Workflow: Search with summaryOnly:true, then fetch full content by hash.`,
     inputSchema: {
       type: 'object',
       properties: {
