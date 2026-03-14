@@ -63,6 +63,13 @@ AI: → searches memories, finds your PostgreSQL + Prisma decision
 
 ---
 
+## 🤔 Why I built this
+
+I got tired of every new conversation starting from zero. I use this daily - saving project status, gotchas, ideas that pop up while I’m deep in work. Instead of breaking flow to write things down somewhere, I just tell the assistant to save it and keep going.
+Having it all central means I can reference old solutions, things that failed, things that worked - across projects, across time. It’s basically an external memory for my dev brain.
+
+---
+
 ## ✨ Features
 
 - 🧠 **Persistent Memory** - Survives across sessions, restarts, forever
