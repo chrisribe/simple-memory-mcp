@@ -6,6 +6,9 @@
 
 Give your AI assistant persistent memory across sessions.
 
+> ### 🚀 Looking for the next evolution?
+> **[git-memory](https://github.com/chrisribe/git-memory)** is now my daily driver — it builds on the ideas from simple-memory and takes them further. If you're starting fresh, check it out! Simple-memory is still functional but is no longer my main focus.
+
 **The problem:** AI assistants forget everything when you start a new conversation. Your preferences, project context, decisions - all gone.
 
 **The solution:** Simple Memory lets AI store and retrieve information that persists forever. Local SQLite database, zero cloud, sub-millisecond fast.
